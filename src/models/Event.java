@@ -67,4 +67,13 @@ public class Event {
     public void setTicketPrice(double ticketPrice) {
         this.ticketPrice = ticketPrice;
     }
+
+    // Core logic to handle a ticket purchase
+    public boolean purchaseTickets(int amount) {
+        if (amount > 0 && amount <= availableSeats) {
+            availableSeats -= amount;
+            return true; // Purchase successful
+        }
+        return false; // Not enough tickets available
+    }
 }
