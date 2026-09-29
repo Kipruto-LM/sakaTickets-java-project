@@ -1,20 +1,41 @@
 package views;
 
+import controllers.EventManager;
+import controllers.OrderManager;
+import java.awt.CardLayout;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.SwingConstants;
-import java.awt.BorderLayout;
+import javax.swing.JPanel;
 
 public class MainFrame extends JFrame {
+    private static final String CATALOG = "catalog";
+    private static final String CHECKOUT = "checkout";
+
+    private final CardLayout cardLayout = new CardLayout();
+    private final JPanel cardPanel = new JPanel(cardLayout);
+    private final EventManager eventManager;
+
     public MainFrame() {
-        // Setup the main window properties
+        eventManager = new EventManager();
+        OrderManager orderManager = new OrderManager();
+
+        EventCatalogPanel catalogPanel = new EventCatalogPanel(eventManager, this::showCheckout);
+        CheckoutPanel checkoutPanel = new CheckoutPanel(eventManager, orderManager, this::showCatalog);
+        cardPanel.add(catalogPanel, CATALOG);
+        cardPanel.add(checkoutPanel, CHECKOUT);
+
         setTitle("SakaTickets");
-        setSize(800, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null); // Center on screen
-        
-        // Add a temporary placeholder label so it's not just a blank window
-        JLabel welcomeLabel = new JLabel("Welcome to SakaTickets Application Interface", SwingConstants.CENTER);
-        add(welcomeLabel, BorderLayout.CENTER);
+        setContentPane(cardPanel);
+        setSize(900, 600);
+        setLocationRelativeTo(null);
+    }
+
+    private void showCheckout(String eventId) {
+        ((CheckoutPanel) cardPanel.getComponent(1)).setEvent(eventId);
+        cardLayout.show(cardPanel, CHECKOUT);
+    }
+
+    private void showCatalog() {
+        cardLayout.show(cardPanel, CATALOG);
     }
 }
