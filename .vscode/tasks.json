@@ -1,0 +1,19 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "SakaTickets: Compile",
+            "type": "shell",
+            "command": "/home/jst_talel/.vscode-server/data/User/globalStorage/pleiades.java-extension-pack-jdk/maven/latest/bin/mvn",
+            "args": [
+                "-q",
+                "-DskipTests",
+                "compile"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": "$maven"
+        }
+    ]
+}
