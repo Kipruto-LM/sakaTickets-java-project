@@ -1,6 +1,5 @@
 package views;
 
-import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -12,6 +11,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
+import javax.swing.border.EmptyBorder;
 
 public class AdminLoginPanel extends JPanel {
     private final JTextField usernameField = new JTextField(20);
@@ -21,11 +21,15 @@ public class AdminLoginPanel extends JPanel {
     public AdminLoginPanel(Runnable loginSuccess, Runnable backToHome) {
         this.loginSuccess = loginSuccess;
         setLayout(new GridBagLayout());
+        setBackground(ViewStyles.BACKGROUND);
 
         JPanel form = new JPanel(new GridBagLayout());
+        form.setBackground(ViewStyles.SURFACE);
         form.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(55, 72, 81)),
-                BorderFactory.createEmptyBorder(28, 32, 28, 32)));
+            BorderFactory.createLineBorder(ViewStyles.OUTLINE),
+            new EmptyBorder(28, 32, 28, 32)));
+        ViewStyles.styleInput(usernameField);
+        ViewStyles.styleInput(passwordField);
 
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 0;
@@ -34,13 +38,15 @@ public class AdminLoginPanel extends JPanel {
         constraints.anchor = GridBagConstraints.WEST;
         constraints.insets = new Insets(0, 0, 20, 0);
         JLabel title = new JLabel("Host an Event");
-        title.setFont(title.getFont().deriveFont(Font.BOLD, 23f));
+        ViewStyles.styleHeading(title, 24f);
         form.add(title, constraints);
 
         constraints.gridwidth = 1;
         constraints.gridy++;
         constraints.insets = new Insets(0, 0, 12, 14);
-        form.add(new JLabel("Username"), constraints);
+        JLabel usernameLabel = new JLabel("Username");
+        ViewStyles.styleSecondaryText(usernameLabel, 14f);
+        form.add(usernameLabel, constraints);
         constraints.gridx = 1;
         constraints.insets = new Insets(0, 0, 12, 0);
         form.add(usernameField, constraints);
@@ -48,12 +54,15 @@ public class AdminLoginPanel extends JPanel {
         constraints.gridx = 0;
         constraints.gridy++;
         constraints.insets = new Insets(0, 0, 18, 14);
-        form.add(new JLabel("Password"), constraints);
+        JLabel passwordLabel = new JLabel("Password");
+        ViewStyles.styleSecondaryText(passwordLabel, 14f);
+        form.add(passwordLabel, constraints);
         constraints.gridx = 1;
         constraints.insets = new Insets(0, 0, 18, 0);
         form.add(passwordField, constraints);
 
         JButton loginButton = new JButton("Login");
+        ViewStyles.stylePrimaryButton(loginButton);
         loginButton.addActionListener(event -> authenticate());
         constraints.gridx = 0;
         constraints.gridy++;
@@ -63,6 +72,7 @@ public class AdminLoginPanel extends JPanel {
         form.add(loginButton, constraints);
 
         JButton backButton = new JButton("Back to Home");
+        ViewStyles.styleSecondaryButton(backButton);
         backButton.addActionListener(event -> backToHome.run());
         constraints.gridx = 1;
         constraints.insets = new Insets(0, 0, 0, 0);
