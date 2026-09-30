@@ -5,6 +5,7 @@ public class Booking {
     private String eventId;       // Links this booking to a specific event
     private String customerName;  // Captured during guest checkout
     private String customerEmail; // Acts as the guest's identifier for their receipt
+    private String tierName;
     private int quantity;
     private double totalPrice;
 
@@ -12,10 +13,16 @@ public class Booking {
     }
 
     public Booking(String bookingId, String eventId, String customerName, String customerEmail, int quantity, double totalPrice) {
+        this(bookingId, eventId, customerName, customerEmail, "", quantity, totalPrice);
+    }
+
+    public Booking(String bookingId, String eventId, String customerName, String customerEmail, String tierName,
+            int quantity, double totalPrice) {
         this.bookingId = bookingId;
         this.eventId = eventId;
         this.customerName = customerName;
         this.customerEmail = customerEmail;
+        this.tierName = tierName;
         this.quantity = quantity;
         this.totalPrice = totalPrice;
     }
@@ -51,6 +58,9 @@ public class Booking {
     public void setCustomerEmail(String customerEmail) {
         this.customerEmail = customerEmail;
     }
+
+    public String getTierName() { return tierName; }
+    public void setTierName(String tierName) { this.tierName = tierName; }
 
     public int getQuantity() {
         return quantity;

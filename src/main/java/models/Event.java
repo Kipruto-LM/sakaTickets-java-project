@@ -1,23 +1,34 @@
 package models;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Event {
     private String eventId;
     private String title;
     private String date;
     private String venue;
-    private int availableSeats;
-    private double ticketPrice;
+    private List<TicketTier> ticketTiers = new ArrayList<>();
+    private String status = "ON_SALE";
+    private String hostId;
 
     public Event() {
     }
 
-    public Event(String eventId, String title, String date, String venue, int availableSeats, double ticketPrice) {
+    public Event(String eventId, String title, String date, String venue, List<TicketTier> ticketTiers,
+            String status, String hostId) {
         this.eventId = eventId;
         this.title = title;
         this.date = date;
         this.venue = venue;
-        this.availableSeats = availableSeats;
-        this.ticketPrice = ticketPrice;
+        setTicketTiers(ticketTiers);
+        this.status = status;
+        this.hostId = hostId;
+    }
+
+    public Event(String eventId, String title, String date, String venue, int availableSeats, double ticketPrice) {
+        this(eventId, title, date, venue,
+                List.of(new TicketTier("Regular", ticketPrice, availableSeats)), "ON_SALE", "");
     }
 
     public String getEventId() {
@@ -52,28 +63,43 @@ public class Event {
         this.venue = venue;
     }
 
-    public int getAvailableSeats() {
-        return availableSeats;
+    public List<TicketTier> getTicketTiers() {
+        return ticketTiers;
     }
 
-    public void setAvailableSeats(int availableSeats) {
-        this.availableSeats = availableSeats;
+    public void setTicketTiers(List<TicketTier> ticketTiers) {
+        this.ticketTiers = ticketTiers == null ? new ArrayList<>() : new ArrayList<>(ticketTiers);
+    }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public String getHostId() { return hostId; }
+    public void setHostId(String hostId) { this.hostId = hostId; }
+
+    public boolean purchase(String tierName, int quantity) {
+        if (!"ON_SALE".equals(status) || tierName == null) {
+            return false;
+        }
+        for (TicketTier tier : ticketTiers) {
+            if (tierName.equals(tier.getTierName()) && tier.purchase(quantity)) {
+                if (getAvailableSeats() == 0) {
+                    status = "SOLD_OUT";
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int getAvailableSeats() {
+        return ticketTiers.stream().mapToInt(TicketTier::getAvailableSeats).sum();
     }
 
     public double getTicketPrice() {
-        return ticketPrice;
+        return ticketTiers.isEmpty() ? 0.0 : ticketTiers.get(0).getPrice();
     }
 
-    public void setTicketPrice(double ticketPrice) {
-        this.ticketPrice = ticketPrice;
-    }
-
-    // Core logic to handle a ticket purchase
     public boolean purchaseTickets(int amount) {
-        if (amount > 0 && amount <= availableSeats) {
-            availableSeats -= amount;
-            return true; // Purchase successful
-        }
-        return false; // Not enough tickets available
+        return !ticketTiers.isEmpty() && purchase(ticketTiers.get(0).getTierName(), amount);
     }
 }
