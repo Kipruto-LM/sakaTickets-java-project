@@ -5,7 +5,6 @@ import controllers.OrderManager;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -63,6 +62,10 @@ public class CheckoutPanel extends JPanel {
         add(totalLabel, constraints);
         constraints.gridy = 5;
         add(submitButton, constraints);
+        JButton backButton = new JButton("Back to Catalog");
+        backButton.addActionListener(event -> returnToCatalog.run());
+        constraints.gridy = 6;
+        add(backButton, constraints);
     }
 
     private void addField(String label, JTextField field, GridBagConstraints constraints, int row) {
