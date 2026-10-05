@@ -16,18 +16,26 @@ import java.util.Properties;
 import java.util.UUID;
 import models.User;
 
-/** Registers local host accounts, verifies logins, and atomically stores hashed credentials. */
+/** 
+ * Manages host account registration, authentication, and secure local persistence.
+ * Uses atomic file operations to ensure the properties file is never corrupted during a crash.
+ */
 public class AccountManager {
-    // The account map is indexed by normalized usernames so lookup is case-insensitive.
+    // The target file location for persisting accounts across application restarts
     private final Path accountFile;
+    
+    // In-memory cache of accounts, keyed by a normalized (lowercase) username for case-insensitive lookup
     private final Map<String, User> accounts = new LinkedHashMap<>();
 
-    /** Uses the user's home directory for the local account store. */
+    /** 
+     * Default constructor uses the operating system's user home directory 
+     * to create a hidden '.sakatickets' configuration folder.
+     */
     public AccountManager() {
         this(Path.of(System.getProperty("user.home"), ".sakatickets", "hosts.properties"));
     }
 
-    /** Loads any saved hosts and ensures the demo admin exists for first-time use. */
+    /** Loads existing accounts from disk and ensures the default admin account is seeded. */
     public AccountManager(Path accountFile) {
         this.accountFile = accountFile.toAbsolutePath();
         try {
@@ -38,13 +46,20 @@ public class AccountManager {
         }
     }
 
-    /** Validates and persists a new host; removes the in-memory account if writing fails. */
+    /** 
+     * Validates input fields, creates a new User profile, and persists it to disk.
+     * Uses synchronized keyword to prevent race conditions during concurrent registrations.
+     * 
+     * @return The newly registered User object.
+     */
     public synchronized User register(String name, String email, String username, char[] password)
             throws IOException {
         String cleanName = requireText(name, "Name");
         String cleanEmail = requireText(email, "Email");
         String cleanUsername = requireText(username, "Username");
         String key = accountKey(cleanUsername);
+        
+        // Form Validation Rules
         if (accounts.containsKey(key)) {
             throw new IllegalArgumentException("That username is already registered.");
         }
@@ -60,6 +75,8 @@ public class AccountManager {
 
         User user = new User(UUID.randomUUID().toString(), cleanName, cleanEmail, cleanUsername, password);
         accounts.put(key, user);
+        
+        // Attempt to save to disk. If it fails, remove the user from memory to maintain consistency.
         try {
             saveAccounts();
         } catch (IOException exception) {
@@ -69,7 +86,10 @@ public class AccountManager {
         return user;
     }
 
-    /** Returns a host only when its username and salted password verifier match. */
+    /** 
+     * Searches for the username (case-insensitive) and validates the password.
+     * Returns an Optional to cleanly handle failed logins without returning null.
+     */
     public synchronized Optional<User> authenticate(String username, char[] password) {
         if (username == null || password == null) {
             return Optional.empty();
@@ -78,8 +98,9 @@ public class AccountManager {
         return user != null && user.authenticate(password) ? Optional.of(user) : Optional.empty();
     }
 
-    // Local persistence helpers keep credential serialization out of Swing panels.
-    /** Creates the demo host once, without replacing any existing local account. */
+    /** 
+     * Seeds the application with a default admin account if it's the very first time launching. 
+     */
     private void ensureDefaultAdmin() throws IOException {
         String key = accountKey(User.DEFAULT_ADMIN_USERNAME);
         if (!accounts.containsKey(key)) {
@@ -89,10 +110,10 @@ public class AccountManager {
         }
     }
 
-    /** Reconstructs host profiles from properties containing IDs, salts, and password hashes. */
+    /** Reads the properties file from disk and reconstructs the User objects using saved hashes. */
     private void loadAccounts() throws IOException {
         if (!Files.exists(accountFile)) {
-            return;
+            return; // No file exists yet, skip loading
         }
         Properties properties = new Properties();
         try (InputStream input = Files.newInputStream(accountFile)) {
@@ -104,19 +125,28 @@ public class AccountManager {
             }
             String prefix = encodedKey.substring(0, encodedKey.length() - ".username".length());
             String username = properties.getProperty(encodedKey);
-            User user = User.fromPasswordHash(properties.getProperty(prefix + ".id"),
-                    properties.getProperty(prefix + ".name"), properties.getProperty(prefix + ".email"),
-                    username, properties.getProperty(prefix + ".salt"), properties.getProperty(prefix + ".hash"));
+            User user = User.fromPasswordHash(
+                    properties.getProperty(prefix + ".id"),
+                    properties.getProperty(prefix + ".name"), 
+                    properties.getProperty(prefix + ".email"),
+                    username, 
+                    properties.getProperty(prefix + ".salt"), 
+                    properties.getProperty(prefix + ".hash"));
             accounts.put(accountKey(username), user);
         }
     }
 
-    /** Writes a complete account snapshot and atomically swaps it into place when supported. */
+    /** 
+     * Serializes accounts to a temporary file, then performs an atomic swap with the main file.
+     * This prevents corrupting the hosts.properties file if the app crashes during a write operation.
+     */
     private void saveAccounts() throws IOException {
         Properties properties = new Properties();
         for (User user : accounts.values()) {
+            // Encode the username as a safe properties prefix key
             String prefix = "account." + Base64.getUrlEncoder().withoutPadding()
                     .encodeToString(accountKey(user.getUsername()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            
             properties.setProperty(prefix + ".id", user.getUserId());
             properties.setProperty(prefix + ".name", user.getName());
             properties.setProperty(prefix + ".email", user.getEmail());
@@ -124,28 +154,33 @@ public class AccountManager {
             properties.setProperty(prefix + ".salt", user.getPasswordSalt());
             properties.setProperty(prefix + ".hash", user.getPasswordHash());
         }
+        
         Files.createDirectories(accountFile.getParent());
         Path temporaryFile = Files.createTempFile(accountFile.getParent(), "hosts-", ".tmp");
+        
         try {
             try (OutputStream output = Files.newOutputStream(temporaryFile)) {
                 properties.store(output, "SakaTickets host accounts");
             }
+            // Atomically replace the old file with the new complete temp file
             try {
                 Files.move(temporaryFile, accountFile, StandardCopyOption.REPLACE_EXISTING,
                         StandardCopyOption.ATOMIC_MOVE);
             } catch (AtomicMoveNotSupportedException exception) {
+                // Fallback for file systems that do not support atomic moves
                 Files.move(temporaryFile, accountFile, StandardCopyOption.REPLACE_EXISTING);
             }
         } finally {
-            Files.deleteIfExists(temporaryFile);
+            Files.deleteIfExists(temporaryFile); // Clean up temp file if something failed
         }
     }
 
-    /** Normalizes usernames so authentication is case-insensitive. */
+    /** Standardizes usernames to lowercase so "Talel" and "talel" map to the same account. */
     private static String accountKey(String username) {
         return username.trim().toLowerCase(Locale.ROOT);
     }
 
+    /** Simple validation helper to check for blank inputs. */
     private static String requireText(String value, String label) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(label + " is required.");

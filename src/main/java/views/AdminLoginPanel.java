@@ -22,21 +22,33 @@ import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 import models.User;
 
-/** Host account entry point with separate sign-in and registration forms. */
+/** 
+ * Host account entry point providing dual tabs for sign-in and account registration. 
+ * Securely transmits credentials to the AccountManager and clears password arrays after verification[cite: 11].
+ */
 public class AdminLoginPanel extends JPanel {
-    // Credentials are passed directly to AccountManager; passwords are cleared after use.
     private final AccountManager accountManager;
     private final Consumer<User> loginSuccess;
+    
+    // Login form controls
     private final JTextField loginUsername = new JTextField(20);
     private final JPasswordField loginPassword = new JPasswordField(20);
+    
+    // Registration form controls
     private final JTextField nameField = new JTextField(20);
     private final JTextField emailField = new JTextField(20);
     private final JTextField usernameField = new JTextField(20);
     private final JPasswordField passwordField = new JPasswordField(20);
     private final JPasswordField confirmPasswordField = new JPasswordField(20);
+    
+    // Status messaging labels
     private final JLabel loginMessage = new JLabel(" ");
     private final JLabel registrationMessage = new JLabel(" ");
 
+    /** 
+     * Constructs the login panel layout with branding, an explanatory introduction, 
+     * and tabbed account forms[cite: 11].
+     */
     public AdminLoginPanel(AccountManager accountManager, Consumer<User> loginSuccess, Runnable backToHome) {
         this.accountManager = accountManager;
         this.loginSuccess = loginSuccess;
@@ -44,6 +56,7 @@ public class AdminLoginPanel extends JPanel {
         setBackground(new Color(0x0F, 0x11, 0x17));
         setBorder(new EmptyBorder(25, 32, 24, 32));
 
+        // Top navigation bar with branding and back action
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
         JPanel brand = new JPanel(new GridLayout(2, 1, 0, 3));
@@ -56,12 +69,14 @@ public class AdminLoginPanel extends JPanel {
         brand.add(brandTitle);
         brand.add(brandCaption);
         header.add(brand, BorderLayout.WEST);
+        
         JButton backButton = new JButton("Back to home");
         ViewStyles.styleSecondaryButton(backButton);
         backButton.addActionListener(action -> backToHome.run());
         header.add(backButton, BorderLayout.EAST);
         add(header, BorderLayout.NORTH);
 
+        // Tabbed pane switching between Sign In and Registration
         JTabbedPane accountTabs = new JTabbedPane();
         accountTabs.addTab("Sign In", buildLoginForm());
         accountTabs.addTab("Create Host Account", buildRegistrationForm());
@@ -75,6 +90,7 @@ public class AdminLoginPanel extends JPanel {
                 new EmptyBorder(13, 13, 13, 13)));
         accountCard.add(accountTabs, BorderLayout.CENTER);
 
+        // Main layout splits the screen between the visual introduction and the auth form card
         JPanel layout = new JPanel(new GridLayout(1, 2, 22, 0));
         layout.setOpaque(false);
         layout.add(buildHostIntroduction());
@@ -82,6 +98,7 @@ public class AdminLoginPanel extends JPanel {
         add(layout, BorderLayout.CENTER);
     }
 
+    /** Builds the left-hand column featuring host-focused graphics and mission copy[cite: 11]. */
     private JPanel buildHostIntroduction() {
         JPanel intro = new JPanel(new BorderLayout(0, 14));
         intro.setOpaque(false);
@@ -90,16 +107,21 @@ public class AdminLoginPanel extends JPanel {
         JPanel copy = new JPanel();
         copy.setLayout(new javax.swing.BoxLayout(copy, javax.swing.BoxLayout.Y_AXIS));
         copy.setOpaque(false);
+        
         JLabel eyebrow = new JLabel("FOR THE PEOPLE WHO MAKE IT HAPPEN");
         eyebrow.setForeground(new Color(0x00, 0xB4, 0xFF));
         eyebrow.setFont(ViewStyles.DATA_FONT.deriveFont(java.awt.Font.BOLD, 10f));
+        
         JLabel title = new JLabel("Turn your idea into\na city moment.");
         ViewStyles.styleHeading(title, 27f);
+        
         JLabel description = new JLabel("<html>Create an event, build ticket tiers, and keep every sale in view.</html>");
         ViewStyles.styleSecondaryText(description, 14f);
+        
         JLabel note = new JLabel("One host account. Your event workspace.");
         note.setForeground(new Color(0x00, 0xE5, 0xC4));
         note.setFont(ViewStyles.BODY_FONT.deriveFont(java.awt.Font.BOLD, 12f));
+        
         copy.add(eyebrow);
         copy.add(javax.swing.Box.createVerticalStrut(9));
         copy.add(title);
@@ -111,7 +133,7 @@ public class AdminLoginPanel extends JPanel {
         return intro;
     }
 
-    // Each tab owns one focused account workflow.
+    /** Constructs the Sign In tab form[cite: 11]. */
     private JPanel buildLoginForm() {
         JPanel form = createForm("Host Sign In");
         styleInputs(loginUsername, loginPassword);
@@ -119,6 +141,7 @@ public class AdminLoginPanel extends JPanel {
         addField(form, "Password", loginPassword, 2);
         styleMessage(loginMessage);
         addMessage(form, loginMessage, 3);
+        
         JButton submit = new JButton("Sign In");
         ViewStyles.stylePrimaryButton(submit);
         submit.addActionListener(action -> authenticate());
@@ -126,6 +149,7 @@ public class AdminLoginPanel extends JPanel {
         return form;
     }
 
+    /** Constructs the Account Registration tab form[cite: 11]. */
     private JPanel buildRegistrationForm() {
         JPanel form = createForm("Create Your Host Account");
         styleInputs(nameField, emailField, usernameField, passwordField, confirmPasswordField);
@@ -136,6 +160,7 @@ public class AdminLoginPanel extends JPanel {
         addField(form, "Confirm password", confirmPasswordField, 5);
         styleMessage(registrationMessage);
         addMessage(form, registrationMessage, 6);
+        
         JButton submit = new JButton("Create Account");
         ViewStyles.stylePrimaryButton(submit);
         submit.addActionListener(action -> register());
@@ -143,7 +168,6 @@ public class AdminLoginPanel extends JPanel {
         return form;
     }
 
-    // Shared account-form construction and aligned labels/inputs.
     private JPanel createForm(String title) {
         JPanel form = new JPanel(new GridBagLayout());
         form.setBackground(new Color(0x17, 0x1B, 0x24));
@@ -206,7 +230,7 @@ public class AdminLoginPanel extends JPanel {
         }
     }
 
-    /** Verifies a host account and returns the authenticated profile to MainFrame. */
+    /** Verifies user credentials against the AccountManager and wipes the password array securely[cite: 11]. */
     private void authenticate() {
         char[] password = loginPassword.getPassword();
         try {
@@ -220,11 +244,11 @@ public class AdminLoginPanel extends JPanel {
                 loginPassword.setText("");
             }
         } finally {
-            Arrays.fill(password, '\0');
+            Arrays.fill(password, '\0'); // Clear password from memory
         }
     }
 
-    /** Validates confirmation, registers the host, then opens that host's dashboard. */
+    /** Validates registration matching rules, calls AccountManager, and signs the new host in[cite: 11]. */
     private void register() {
         char[] password = passwordField.getPassword();
         char[] confirmation = confirmPasswordField.getPassword();
@@ -253,5 +277,4 @@ public class AdminLoginPanel extends JPanel {
         passwordField.setText("");
         confirmPasswordField.setText("");
     }
-
 }

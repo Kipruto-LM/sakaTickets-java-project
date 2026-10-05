@@ -15,9 +15,13 @@ import javax.swing.border.CompoundBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.border.MatteBorder;
 
-/** Stores appearance preferences and applies the matching FlatLaf and SakaTickets palette. */
+/** 
+ * Stores appearance preferences and applies the matching FlatLaf theme.
+ * This class ensures that custom Swing borders and colors are dynamically 
+ * re-mapped whenever the user switches between Dark and Light mode.
+ */
 public final class ThemeManager {
-    // Java Preferences keeps appearance settings local to this computer/account.
+    // Java Preferences keeps appearance settings local to this computer's user account
     private static final Preferences PREFERENCES = Preferences.userNodeForPackage(ThemeManager.class);
     private static boolean darkMode = true;
     private static Color accentColor = new Color(0x00, 0xB4, 0xFF);
@@ -25,7 +29,10 @@ public final class ThemeManager {
     private ThemeManager() {
     }
 
-    /** Loads saved settings and applies the matching FlatLaf before UI construction. */
+    /** 
+     * Loads saved settings from the OS registry/preferences and applies 
+     * the matching FlatLaf Look and Feel before UI construction begins.
+     */
     public static void initialize() {
         darkMode = PREFERENCES.getBoolean("darkMode", true);
         try {
@@ -45,7 +52,10 @@ public final class ThemeManager {
         return accentColor;
     }
 
-    /** Persists the selected mode and changes FlatLaf for newly constructed components. */
+    /** 
+     * Persists the selected mode to the OS and updates the Look and Feel 
+     * for any newly constructed components.
+     */
     public static void setDarkMode(boolean dark) {
         darkMode = dark;
         PREFERENCES.putBoolean("darkMode", dark);
@@ -53,7 +63,9 @@ public final class ThemeManager {
         applyLookAndFeel();
     }
 
-    /** Persists the global accent used by primary actions and active navigation. */
+    /** 
+     * Persists the global accent color used by primary buttons and active navigation links. 
+     */
     public static void setAccentColor(Color color) {
         if (color == null) return;
         accentColor = color;
@@ -61,7 +73,11 @@ public final class ThemeManager {
         ViewStyles.setThemeColors(darkMode, accentColor);
     }
 
-    /** Recursively maps custom component colors and borders between dark and light palettes. */
+    /** 
+     * Recursively traverses a Swing component tree and dynamically translates 
+     * custom component colors and borders between dark and light palettes.
+     * This is required because FlatLaf only updates default UI components, not custom colors.
+     */
     public static void applyPalette(Component component) {
         if (component instanceof JComponent swingComponent) {
             Color background = swingComponent.getBackground();
@@ -71,11 +87,13 @@ public final class ThemeManager {
             Border border = swingComponent.getBorder();
             if (border != null) swingComponent.setBorder(mapBorder(border));
         }
+        // Recursively apply to all children in the container
         if (component instanceof Container container) {
             for (Component child : container.getComponents()) applyPalette(child);
         }
     }
 
+    /** Activates the specific FlatLaf theme based on current preferences. */
     private static void applyLookAndFeel() {
         try {
             UIManager.setLookAndFeel(darkMode ? new FlatDarkLaf() : new FlatLightLaf());
@@ -85,19 +103,21 @@ public final class ThemeManager {
         }
     }
 
+    /** Translates background hex codes between light and dark variants. */
     private static Color mapBackground(Color color) {
         int rgb = color.getRGB() & 0xFFFFFF;
         int mapped = darkMode ? backgroundToDark(rgb) : backgroundToLight(rgb);
         return mapped == rgb ? color : new Color(mapped | (color.getAlpha() << 24), true);
     }
 
+    /** Translates text/foreground hex codes between light and dark variants. */
     private static Color mapForeground(Color color) {
         int rgb = color.getRGB() & 0xFFFFFF;
         int mapped = darkMode ? foregroundToDark(rgb) : foregroundToLight(rgb);
         return mapped == rgb ? color : new Color(mapped | (color.getAlpha() << 24), true);
     }
 
-    // Separate role maps prevent a white surface from being mistaken for white text.
+    // Explicit color mapping tables prevent surfaces from blending into text
     private static int backgroundToLight(int rgb) {
         return switch (rgb) {
             case 0x0F1117, 0x121212 -> 0xF4F7FB;
@@ -133,6 +153,7 @@ public final class ThemeManager {
         };
     }
 
+    /** Ensures border lines update their colors when the theme switches. */
     private static Border mapBorder(Border border) {
         if (border instanceof CompoundBorder compound) {
             return BorderFactory.createCompoundBorder(mapBorder(compound.getOutsideBorder()),
@@ -153,7 +174,10 @@ public final class ThemeManager {
         return mapped == rgb ? color : new Color(mapped | (color.getAlpha() << 24), true);
     }
 
-    /** Restores the application font role after each FlatLaf change. */
+    /** 
+     * Restores the application font role after each FlatLaf Look and Feel change,
+     * ensuring typography remains consistent regardless of the OS defaults.
+     */
     private static void applyGlobalFonts() {
         Font bodyFont = new Font("Ubuntu Sans", Font.PLAIN, 14);
         UIManager.put("defaultFont", bodyFont);

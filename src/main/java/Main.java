@@ -3,20 +3,39 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import views.ThemeManager;
 
-/** Starts SakaTickets after loading saved theme preferences and configuring shared fonts. */
+/** 
+ * The main entry point for the SakaTickets application. 
+ * Orchestrates the loading of the FlatLaf theme engine before initializing the UI.
+ */
 public class Main {
-    /** Initializes appearance defaults, constructs the frame, and maximizes after first paint. */
+    
+    /** 
+     * Bootstraps the application.
+     * 
+     * @param args Command line arguments (unused).
+     */
     public static void main(String[] args) {
-        // Install the saved FlatLaf theme before Swing constructs any components.
+        
+        // 1. Initialize the UI styling before any Swing components are instantiated
+        // This ensures the Dark/Light mode preferences are applied globally.
         ThemeManager.initialize();
-        // Create and show Swing windows on the event-dispatch thread.
+        
+        // 2. Schedule the GUI creation on the Event-Dispatch Thread (EDT).
+        // This is a strict requirement for Java Swing thread safety.
         SwingUtilities.invokeLater(() -> {
+            
+            // Construct the main container frame and its CardLayout child panels
             MainFrame app = new MainFrame();
+            
+            // Force the window to paint its initial layout bounds
             app.setVisible(true);
             app.validate();
             app.repaint();
+            
+            // 3. Queue a secondary task on the EDT to maximize the window.
+            // Doing this *after* the first paint prevents clipping/rendering bugs 
+            // commonly caused by OS window managers (especially in WSL/Linux environments).
             SwingUtilities.invokeLater(() -> {
-                // Maximize after the first visible paint so window managers calculate bounds correctly.
                 app.setExtendedState(JFrame.MAXIMIZED_BOTH);
                 app.validate();
                 app.repaint();

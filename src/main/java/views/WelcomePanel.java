@@ -14,46 +14,63 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
-/** First-run role chooser that routes visitors to event browsing or host sign-in. */
+/** 
+ * The initial landing page of the application. 
+ * Acts as a router presenting users with the choice to either browse events (Guest flow) 
+ * or log in to create events (Host flow). 
+ */
 public class WelcomePanel extends JPanel {
     private JPanel buyerArtwork;
     private JPanel hostArtwork;
 
-    /** Presents the two primary app paths and their event-specific imagery. */
+    /** 
+     * Constructs the welcome screen and wires up the primary navigation callbacks.
+     * 
+     * @param browseEvents     Callback executed when the user clicks to attend events.
+     * @param hostEventAction  Callback executed when the user clicks to host events.
+     */
     public WelcomePanel(Runnable browseEvents, Runnable hostEventAction) {
         setLayout(new BorderLayout(0, 24));
         setBackground(new Color(0x0F, 0x11, 0x17));
         setBorder(new EmptyBorder(25, 38, 28, 38));
         add(buildHeader(), BorderLayout.NORTH);
 
+        // Main content wrapper utilizing BoxLayout for vertical stacking
         JPanel content = new JPanel();
         content.setOpaque(false);
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        
         JPanel introduction = buildIntroduction();
         introduction.setAlignmentX(LEFT_ALIGNMENT);
         introduction.setMaximumSize(new Dimension(Integer.MAX_VALUE, introduction.getPreferredSize().height));
         content.add(introduction);
         content.add(Box.createVerticalStrut(22));
 
+        // Side-by-side role selection cards
         JPanel choices = new JPanel(new GridLayout(1, 2, 18, 0));
         choices.setOpaque(false);
         buyerArtwork = EventVisuals.buyerChoice(216, 12);
         hostArtwork = EventVisuals.hostChoice(216, 12);
+        
         choices.add(buildChoice("01   /   ATTEND", "Find your people.\nFind your next thing.",
                 "Live music, food, culture and ideas worth leaving home for.", "Browse events",
                 buyerArtwork, ViewStyles.ACCENT, Color.WHITE, browseEvents));
+                
         choices.add(buildChoice("02   /   CREATE", "Put your event\non the map.",
                 "Build your event, shape ticket tiers, and follow every sale.", "Start hosting",
                 hostArtwork, new Color(0x00, 0xE5, 0xC4), new Color(0x0F, 0x11, 0x17), hostEventAction));
+                
         choices.setAlignmentX(LEFT_ALIGNMENT);
         choices.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         content.add(choices);
         content.add(Box.createVerticalGlue());
+        
         JPanel footer = buildFooter();
         footer.setAlignmentX(LEFT_ALIGNMENT);
         content.add(footer);
         add(content, BorderLayout.CENTER);
 
+        // Listen for window resizing to dynamically scale the large photo cards
         addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent event) {
@@ -62,49 +79,63 @@ public class WelcomePanel extends JPanel {
         });
     }
 
-    /** Keeps role photos proportional to their available card width on wide screens. */
+    /** 
+     * Dynamically calculates and applies proportional dimensions to the role artwork, 
+     * ensuring images maintain a pleasing aspect ratio on wide desktop displays.
+     */
     private void resizeRoleArtwork() {
         if (getWidth() <= 0) return;
+        // Calculate available card width considering margins and gap spacing
         int cardWidth = Math.max(360, (getWidth() - 76 - 18) / 2);
         int imageHeight = Math.max(216, Math.min(500, (int) (cardWidth * 0.54)));
+        
         buyerArtwork.setPreferredSize(new Dimension(480, imageHeight));
         hostArtwork.setPreferredSize(new Dimension(480, imageHeight));
         revalidate();
     }
 
-    /** Brand and location strip above the buyer/host role choices. */
+    /** Constructs the top branding and location strip. */
     private JPanel buildHeader() {
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
         JPanel identity = new JPanel(new GridLayout(2, 1, 0, 2));
         identity.setOpaque(false);
+        
         JLabel name = new JLabel("SakaTickets");
         name.setFont(ViewStyles.DISPLAY_FONT.deriveFont(java.awt.Font.BOLD, 22f));
         name.setForeground(Color.WHITE);
+        
         JLabel descriptor = new JLabel("NAIROBI  ·  LIVE EVENTS");
         descriptor.setForeground(new Color(0x00, 0xB4, 0xFF));
         descriptor.setFont(ViewStyles.DATA_FONT.deriveFont(java.awt.Font.BOLD, 9f));
+        
         identity.add(name);
         identity.add(descriptor);
         header.add(identity, BorderLayout.WEST);
+        
         JLabel location = new JLabel("KENYA   /   01°17′S  36°49′E");
         location.setForeground(new Color(0x88, 0x96, 0xB3));
         location.setFont(ViewStyles.DATA_FONT.deriveFont(10f));
         header.add(location, BorderLayout.EAST);
+        
         return header;
     }
 
-    /** Short opening message that explains the two paths into the application. */
+    /** Constructs the introductory mission statement text block. */
     private JPanel buildIntroduction() {
         JPanel introduction = new JPanel(new BorderLayout(0, 8));
         introduction.setOpaque(false);
+        
         JLabel eyebrow = new JLabel("GOOD THINGS HAPPEN HERE");
         eyebrow.setForeground(new Color(0x00, 0xE5, 0xC4));
         eyebrow.setFont(ViewStyles.DATA_FONT.deriveFont(java.awt.Font.BOLD, 10f));
+        
         JLabel heading = new JLabel("Good things happen when you show up.");
         ViewStyles.styleHeading(heading, 33f);
+        
         JLabel description = new JLabel("Discover Nairobi events, book tickets, or bring your own idea to life.");
         ViewStyles.styleSecondaryText(description, 15f);
+        
         JPanel copy = new JPanel();
         copy.setOpaque(false);
         copy.setLayout(new BoxLayout(copy, BoxLayout.Y_AXIS));
@@ -114,12 +145,25 @@ public class WelcomePanel extends JPanel {
         copy.add(Box.createVerticalStrut(4));
         copy.add(description);
         introduction.add(copy, BorderLayout.WEST);
+        
         return introduction;
     }
 
-    /** Builds a photo-led role card with separate descriptive copy and a clear action. */
+    /** 
+     * Constructs a complete, styled role selection card.
+     * 
+     * @param index           Visual numbering step (e.g., "01").
+     * @param title           The primary card heading.
+     * @param description     Sub-text explaining the role.
+     * @param buttonText      The call to action text on the button.
+     * @param image           The pre-configured EventVisuals panel.
+     * @param buttonColor     The background color for this specific role's button.
+     * @param buttonTextColor The text color for the button.
+     * @param action          The Runnable to execute on click.
+     */
     private JPanel buildChoice(String index, String title, String description, String buttonText,
             JPanel image, Color buttonColor, Color buttonTextColor, Runnable action) {
+                
         JPanel choice = new JPanel(new BorderLayout(0, 0));
         choice.setBackground(new Color(0x17, 0x1B, 0x24));
         choice.setBorder(BorderFactory.createCompoundBorder(
@@ -131,16 +175,21 @@ public class WelcomePanel extends JPanel {
         JPanel copy = new JPanel(new BorderLayout(0, 10));
         copy.setOpaque(false);
         copy.setBorder(new EmptyBorder(15, 10, 2, 8));
+        
         JPanel words = new JPanel();
         words.setOpaque(false);
         words.setLayout(new BoxLayout(words, BoxLayout.Y_AXIS));
+        
         JLabel eyebrow = new JLabel(index);
         eyebrow.setForeground(new Color(0x00, 0xB4, 0xFF));
         eyebrow.setFont(ViewStyles.DATA_FONT.deriveFont(java.awt.Font.BOLD, 10f));
+        
         JLabel heading = new JLabel("<html>" + title.replace("\n", "<br>") + "</html>");
         ViewStyles.styleHeading(heading, 21f);
+        
         JLabel explanation = new JLabel("<html>" + description + "</html>");
         ViewStyles.styleSecondaryText(explanation, 13f);
+        
         words.add(eyebrow);
         words.add(Box.createVerticalStrut(7));
         words.add(heading);
@@ -162,26 +211,32 @@ public class WelcomePanel extends JPanel {
         JPanel actionRow = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0));
         actionRow.setOpaque(false);
         actionRow.add(choose);
+        
         copy.add(words, BorderLayout.CENTER);
         copy.add(actionRow, BorderLayout.SOUTH);
         choice.add(copy, BorderLayout.CENTER);
         choice.setMinimumSize(new Dimension(300, 360));
+        
         return choice;
     }
 
-    /** Quiet location-specific footer that anchors the landing page. */
+    /** Constructs the quiet, stylized footer text block. */
     private JPanel buildFooter() {
         JPanel footer = new JPanel(new BorderLayout());
         footer.setOpaque(false);
         footer.setBorder(new EmptyBorder(12, 1, 0, 1));
+        
         JLabel left = new JLabel("MADE FOR NAIROBI NIGHTS, DAYS AND EVERYTHING BETWEEN");
         left.setForeground(new Color(0x6F, 0x7E, 0x99));
         left.setFont(ViewStyles.DATA_FONT.deriveFont(9f));
+        
         JLabel right = new JLabel("DISCOVER  ·  GATHER  ·  CREATE");
         right.setForeground(new Color(0x6F, 0x7E, 0x99));
         right.setFont(ViewStyles.DATA_FONT.deriveFont(9f));
+        
         footer.add(left, BorderLayout.WEST);
         footer.add(right, BorderLayout.EAST);
+        
         return footer;
     }
 }

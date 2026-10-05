@@ -23,36 +23,36 @@ import models.Booking;
 import models.Event;
 import models.TicketTier;
 
-/** Guest checkout: event/tier selection, live totals, availability, and purchase confirmation. */
+/** 
+ * Handles the guest checkout flow. Displays event details alongside a form 
+ * for tier selection, quantity, and guest contact information.
+ */
 public class CheckoutPanel extends JPanel {
-    // Shared order services and guest-entered checkout state.
     private final EventManager eventManager;
     private final OrderManager orderManager;
     private final Runnable returnToCatalog;
+    
+    // UI Label Elements
     private final JLabel titleLabel = new JLabel("Select an event");
     private final JLabel dateLabel = new JLabel("Date");
     private final JLabel venueLabel = new JLabel("Venue");
     private final JLabel priceLabel = new JLabel("Price per ticket");
     private final JLabel availabilityLabel = new JLabel("Select a ticket tier");
     private final JLabel totalLabel = new JLabel("Total: KSh 0.00");
+    
+    // UI Input Elements
     private final JTextField nameField = new JTextField(20);
     private final JTextField emailField = new JTextField(20);
     private final JSpinner quantitySpinner = new JSpinner(new SpinnerNumberModel(1, 1, 1, 1));
     private final JComboBox<TicketTier> tierSelector = new JComboBox<>();
     private final JPanel eventImage = new JPanel(new BorderLayout());
+    
     private final Consumer<Booking> bookingConfirmed;
     private JButton confirmButton;
     private Event selectedEvent;
     private TicketTier selectedTier;
 
-    public CheckoutPanel(EventManager eventManager, OrderManager orderManager, Runnable returnToCatalog) {
-        this(eventManager, orderManager, returnToCatalog, booking -> {
-            JOptionPane.showMessageDialog(null, "Purchase confirmed. Receipt: " + booking.getBookingId(),
-                    "Booking successful", JOptionPane.INFORMATION_MESSAGE);
-            returnToCatalog.run();
-        });
-    }
-
+    /** Primary constructor used in MainFrame to map navigation logic. */
     public CheckoutPanel(EventManager eventManager, OrderManager orderManager, Runnable returnToCatalog,
             Consumer<Booking> bookingConfirmed) {
         this.eventManager = eventManager;
@@ -62,13 +62,12 @@ public class CheckoutPanel extends JPanel {
         buildView();
     }
 
-    /** Refreshes event details and the selectable ticket tiers before checkout. */
+    /** 
+     * Initializes the panel with the event the guest clicked on in the catalog.
+     * Updates the UI labels and dynamically populates the ticket tier dropdown.
+     */
     public void setEvent(String eventId) {
-        setEvent(eventManager.getEventById(eventId));
-    }
-
-    public void setEvent(Event event) {
-        selectedEvent = event;
+        selectedEvent = eventManager.getEventById(eventId);
         if (selectedEvent == null) {
             titleLabel.setText("Event unavailable");
             dateLabel.setText("");
@@ -85,10 +84,12 @@ public class CheckoutPanel extends JPanel {
         titleLabel.setText(selectedEvent.getTitle());
         dateLabel.setText(selectedEvent.getDate());
         venueLabel.setText(selectedEvent.getVenue());
+        
         eventImage.removeAll();
         eventImage.add(EventVisuals.event(selectedEvent, 156, 9), BorderLayout.CENTER);
         eventImage.revalidate();
         eventImage.repaint();
+        
         tierSelector.removeAllItems();
         selectedEvent.getTicketTiers().forEach(tierSelector::addItem);
         if (tierSelector.getItemCount() > 0) {
@@ -97,7 +98,7 @@ public class CheckoutPanel extends JPanel {
         updateTierSelection();
     }
 
-    // Event artwork/details and purchase form are separate visual columns.
+    /** Constructs the split-layout UI containing the summary card and checkout form. */
     private void buildView() {
         setLayout(new GridBagLayout());
         setBackground(ViewStyles.BACKGROUND);
@@ -116,6 +117,7 @@ public class CheckoutPanel extends JPanel {
         add(content, constraints);
     }
 
+    /** Builds the left-hand panel displaying the selected event's imagery and schedule. */
     private JPanel buildEventDetails() {
         JPanel details = new JPanel(new GridBagLayout());
         details.setBackground(ViewStyles.SURFACE);
@@ -147,11 +149,13 @@ public class CheckoutPanel extends JPanel {
         addDetail(details, dateLabel, constraints, 12);
         constraints.gridy++;
         addDetail(details, venueLabel, constraints, 12);
+        
         constraints.gridy++;
         priceLabel.setForeground(ViewStyles.FOREGROUND);
         priceLabel.setFont(priceLabel.getFont().deriveFont(java.awt.Font.BOLD, 16f));
         constraints.insets = new Insets(8, 0, 0, 0);
         details.add(priceLabel, constraints);
+        
         return details;
     }
 
@@ -161,6 +165,7 @@ public class CheckoutPanel extends JPanel {
         panel.add(label, constraints);
     }
 
+    /** Builds the right-hand panel containing guest inputs and the submission controls. */
     private JPanel buildPurchaseForm() {
         JPanel form = new JPanel(new GridBagLayout());
         form.setBackground(ViewStyles.SURFACE);
@@ -174,6 +179,8 @@ public class CheckoutPanel extends JPanel {
         if (quantitySpinner.getEditor() instanceof JSpinner.DefaultEditor editor) {
             ViewStyles.styleInput(editor.getTextField());
         }
+        
+        // Listen to the spinner so the KSh total updates immediately
         quantitySpinner.addChangeListener(event -> updateTotal());
 
         GridBagConstraints constraints = new GridBagConstraints();
@@ -184,6 +191,7 @@ public class CheckoutPanel extends JPanel {
         constraints.fill = GridBagConstraints.HORIZONTAL;
         constraints.weightx = 1;
         constraints.insets = new Insets(0, 0, 20, 0);
+        
         JLabel heading = new JLabel("Guest details");
         ViewStyles.styleHeading(heading, 21f);
         form.add(heading, constraints);
@@ -194,6 +202,7 @@ public class CheckoutPanel extends JPanel {
         addField(form, "Ticket Tier", tierSelector, constraints, 5);
         addField(form, "Ticket Quantity", quantitySpinner, constraints, 7);
 
+        // Customize the dropdown renderer to format tier names and prices elegantly
         tierSelector.setRenderer((list, tier, index, selected, focus) -> {
             JLabel item = new JLabel(tier == null ? "Select a ticket tier"
                 : String.format("%s - KES %,.2f (%d left)", tier.getTierName(), tier.getPrice(), tier.getAvailableSeats()));
@@ -207,7 +216,7 @@ public class CheckoutPanel extends JPanel {
 
         totalLabel.setForeground(ViewStyles.FOREGROUND);
         totalLabel.setFont(totalLabel.getFont().deriveFont(java.awt.Font.BOLD, 16f));
-        constraints.gridx = 0;
+        
         ViewStyles.styleSecondaryText(availabilityLabel, 13f);
         constraints.gridx = 0;
         constraints.gridy = 9;
@@ -216,7 +225,6 @@ public class CheckoutPanel extends JPanel {
         form.add(availabilityLabel, constraints);
 
         constraints.gridy = 10;
-        constraints.gridwidth = 2;
         constraints.insets = new Insets(12, 0, 18, 0);
         form.add(totalLabel, constraints);
 
@@ -235,9 +243,11 @@ public class CheckoutPanel extends JPanel {
         constraints.gridy = 11;
         constraints.insets = new Insets(0, 0, 0, 0);
         form.add(actions, constraints);
+        
         return form;
     }
 
+    /** Helper to correctly stack a label above its input field in the GridBagLayout. */
     private void addField(JPanel form, String label, java.awt.Component input,
             GridBagConstraints constraints, int row) {
         constraints.gridy = row;
@@ -256,14 +266,17 @@ public class CheckoutPanel extends JPanel {
         constraints.gridwidth = 1;
     }
 
-    /** Recalculates the subtotal whenever ticket tier or quantity changes. */
+    /** Multiplies the active tier's price by the selected quantity. */
     private void updateTotal() {
         int quantity = (Integer) quantitySpinner.getValue();
         double total = selectedTier == null ? 0 : selectedTier.getPrice() * quantity;
         totalLabel.setText(String.format("Total: KSh %,.2f", total));
     }
 
-    /** Updates price, quantity bounds, and purchase availability for the selected tier. */
+    /** 
+     * Re-calculates maximum allowed spinner quantity based on the selected tier's 
+     * remaining inventory and updates availability messaging.
+     */
     private void updateTierSelection() {
         selectedTier = (TicketTier) tierSelector.getSelectedItem();
         if (selectedTier == null) {
@@ -274,19 +287,27 @@ public class CheckoutPanel extends JPanel {
             updateTotal();
             return;
         }
+        
         priceLabel.setText(String.format("%s - KES %,.2f per ticket", selectedTier.getTierName(), selectedTier.getPrice()));
+        
         int maximumSeats = Math.max(1, selectedTier.getAvailableSeats());
         int quantity = Math.min((Integer) quantitySpinner.getValue(), maximumSeats);
         quantitySpinner.setModel(new SpinnerNumberModel(quantity, 1, maximumSeats, 1));
+        
         boolean dateIsOpen = selectedEvent != null && selectedEvent.canPurchaseOn(LocalDate.now());
         boolean tierHasSeats = selectedTier.getAvailableSeats() > 0;
+        
         availabilityLabel.setText(!dateIsOpen ? "Sales Closed"
                 : tierHasSeats ? selectedTier.getAvailableSeats() + " tickets available" : "This tier is sold out");
+                
         if (confirmButton != null) confirmButton.setEnabled(dateIsOpen && tierHasSeats);
         updateTotal();
     }
 
-    /** Deducts tier inventory, creates a booking, and hands the receipt to MainFrame. */
+    /** 
+     * Validates guest inputs, deducts inventory via the Event model, and delegates 
+     * receipt generation to the OrderManager.
+     */
     private void submitBooking() {
         int quantity = (Integer) quantitySpinner.getValue();
         if (selectedEvent == null || selectedTier == null || nameField.getText().isBlank()
@@ -295,20 +316,23 @@ public class CheckoutPanel extends JPanel {
                     "Invalid booking", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        
+        // The event model rejects the purchase if the tier doesn't have enough seats
         if (!selectedEvent.purchase(selectedTier.getTierName(), quantity)) {
             JOptionPane.showMessageDialog(this, "Sales are closed or this ticket tier is sold out.", "Purchase unavailable",
                     JOptionPane.WARNING_MESSAGE);
-            setEvent(selectedEvent);
+            setEvent(selectedEvent.getEventId()); // Refresh the UI state
             return;
         }
 
+        // Generate the receipt and hand it off to the MainFrame
         Booking booking = orderManager.createBooking(selectedEvent.getEventId(), nameField.getText().trim(),
             emailField.getText().trim(), selectedTier.getTierName(), quantity, selectedTier.getPrice() * quantity);
+            
         clearForm();
         bookingConfirmed.accept(booking);
     }
 
-    /** Clears guest-entered values after handing off the completed booking. */
     private void clearForm() {
         nameField.setText("");
         emailField.setText("");

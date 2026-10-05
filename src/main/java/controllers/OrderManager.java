@@ -5,47 +5,48 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/** Creates guest booking receipts and calculates event-level ticket/revenue analytics. */
+/** 
+ * Serves as the central repository and analytics engine for guest transactions.
+ * Manages the generation of unique receipts and calculates event-level revenue.
+ */
 public class OrderManager {
-    // In-memory booking repository for this MVP.
+    // In-memory list acting as our database for the MVP
     private List<Booking> allBookings;
 
     public OrderManager() {
         this.allBookings = new ArrayList<>();
-        // In a complete app, you would load existing bookings from a JSON file here
+        // Note: For persistent storage, load from a bookings.json file here
     }
 
-    // Creates a new booking, generates a UUID, and saves it to the list
-    /** Legacy overload retained for callers that do not specify a ticket tier. */
-    public Booking createBooking(String eventId, String customerName, String customerEmail, int quantity, double totalPrice) {
-        return createBooking(eventId, customerName, customerEmail, "", quantity, totalPrice);
-    }
-
-    /** Generates an eight-character receipt ID, stores the booking, and returns it. */
+    /** 
+     * Generates a short, user-friendly 8-character receipt UUID, creates the booking,
+     * and saves it to the in-memory database.
+     * 
+     * @return The finalized Booking object, ready to be displayed on the TicketSummaryPanel.
+     */
     public Booking createBooking(String eventId, String customerName, String customerEmail, String tierName,
             int quantity, double totalPrice) {
-        // Generate a short, readable 8-character alphanumeric ticket ID
+                
+        // Generate an 8-character alphanumeric string (e.g., "A1B2C3D4")
         String uniqueBookingId = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         
         Booking newBooking = new Booking(uniqueBookingId, eventId, customerName, customerEmail, tierName,
                 quantity, totalPrice);
-        allBookings.add(newBooking);
         
-        // Print to terminal for testing purposes
+        allBookings.add(newBooking);
         System.out.println("Success! Ticket " + uniqueBookingId + " generated for " + customerName);
         
-        // In a complete app, you would save the updated allBookings list to a JSON file here
         return newBooking;
     }
 
-    // Retrieve all bookings (for the Admin dashboard)
-    /** Returns the current in-memory booking collection for reporting screens. */
+    /** Retrieves the entire transaction history (useful for master admin reporting). */
     public List<Booking> getAllBookings() {
         return allBookings;
     }
 
-    // Retrieve bookings for a specific event to check sales
-    /** Selects bookings for one event so attendee lists and analytics share one source. */
+    /** 
+     * Filters the master booking list to return only transactions for a specific event. 
+     */
     public List<Booking> getBookingsByEvent(String eventId) {
         List<Booking> eventBookings = new ArrayList<>();
         for (Booking b : allBookings) {
@@ -56,11 +57,16 @@ public class OrderManager {
         return eventBookings;
     }
 
-    // Analytics are calculated from saved booking records so the dashboard stays current.
+    /** 
+     * Calculates total gross revenue for an event by summing the prices of all related bookings. 
+     */
     public double calculateEventRevenue(String eventId) {
         return getBookingsByEvent(eventId).stream().mapToDouble(Booking::getTotalPrice).sum();
     }
 
+    /** 
+     * Calculates the total physical ticket quantity sold for an event. 
+     */
     public int calculateTotalTicketsSold(String eventId) {
         return getBookingsByEvent(eventId).stream().mapToInt(Booking::getQuantity).sum();
     }
