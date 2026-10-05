@@ -150,13 +150,13 @@ public class AdminDashboardPanel extends JPanel {
         workspace.add(buildTopBar(), BorderLayout.NORTH);
 
         pages.setBackground(new Color(0x0F, 0x11, 0x17));
-        pages.add(buildOverviewPage(), "Overview");
+        pages.add(buildOverviewPage(hostName), "Overview");
         pages.add(buildManageEventsPage(), "Manage Events");
         pages.add(buildSettingsPage(hostName), "Settings");
         pages.add(buildManagementForm(), "Editor");
         workspace.add(pages, BorderLayout.CENTER);
         add(workspace, BorderLayout.CENTER);
-        showPage("Manage Events");
+        showPage("Overview");
     }
 
     private JPanel buildSidebar(String name) {
@@ -177,7 +177,8 @@ public class AdminDashboardPanel extends JPanel {
         brand.add(logo);
         sidebar.add(brand, BorderLayout.NORTH);
 
-        JPanel navigation = new JPanel(new GridLayout(0, 1, 0, 5));
+        JPanel navigation = new JPanel();
+        navigation.setLayout(new javax.swing.BoxLayout(navigation, javax.swing.BoxLayout.Y_AXIS));
         navigation.setOpaque(false);
         navigation.setBorder(new EmptyBorder(0, 8, 10, 8));
         for (String item : List.of("Overview", "Manage Events", "Settings")) {
@@ -186,9 +187,13 @@ public class AdminDashboardPanel extends JPanel {
             button.setFocusPainted(false);
             button.setBorder(BorderFactory.createEmptyBorder(11, 13, 11, 8));
             button.setOpaque(true);
+            button.setAlignmentX(LEFT_ALIGNMENT);
+            button.setPreferredSize(new Dimension(196, 44));
+            button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
             button.addActionListener(action -> showPage(item));
             navButtons.put(item, button);
             navigation.add(button);
+            navigation.add(javax.swing.Box.createVerticalStrut(5));
         }
         sidebar.add(navigation, BorderLayout.CENTER);
 
@@ -238,25 +243,65 @@ public class AdminDashboardPanel extends JPanel {
                 startNewEvent();
             }
         });
-        top.add(createEventButton, BorderLayout.EAST);
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        right.setOpaque(false);
+        JPanel liveTag = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        liveTag.setOpaque(false);
+        JLabel liveDot = new JLabel("●");
+        liveDot.setForeground(new Color(0x00, 0xE0, 0xA0));
+        liveDot.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 10));
+        JLabel liveText = new JLabel("HOST STUDIO  /  LIVE");
+        liveText.setForeground(new Color(0x88, 0x96, 0xB3));
+        liveText.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 9f));
+        liveTag.add(liveDot);
+        liveTag.add(liveText);
+        right.add(liveTag);
+        right.add(createEventButton);
+        top.add(right, BorderLayout.EAST);
         return top;
     }
 
-    private JPanel buildOverviewPage() {
+    private JPanel buildOverviewPage(String name) {
         JPanel page = new JPanel(new BorderLayout(0, 18));
         page.setOpaque(false);
-        page.add(buildSummaryCards(), BorderLayout.NORTH);
+        JPanel overview = new JPanel(new BorderLayout(0, 6));
+        overview.setOpaque(false);
+        JLabel welcome = new JLabel("Welcome back, " + name + ".");
+        ViewStyles.styleHeading(welcome, 18f);
+        JLabel note = new JLabel("Your events, ticket sales and host tools are ready.");
+        ViewStyles.styleSecondaryText(note, 12f);
+        overview.add(welcome, BorderLayout.NORTH);
+        overview.add(note, BorderLayout.SOUTH);
+        overview.setAlignmentX(LEFT_ALIGNMENT);
+        overview.setMaximumSize(new Dimension(Integer.MAX_VALUE, overview.getPreferredSize().height));
+        JPanel content = new JPanel();
+        content.setOpaque(false);
+        content.setLayout(new javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS));
+        JPanel summaryCards = buildSummaryCards();
+        summaryCards.setAlignmentX(LEFT_ALIGNMENT);
+        content.add(overview);
+        content.add(javax.swing.Box.createVerticalStrut(17));
+        content.add(summaryCards);
+        content.add(javax.swing.Box.createVerticalStrut(17));
         JPanel lower = new JPanel(new GridLayout(1, 2, 14, 0));
         lower.setOpaque(false);
+        lower.setAlignmentX(LEFT_ALIGNMENT);
+        lower.setPreferredSize(new Dimension(900, 210));
+        lower.setMaximumSize(new Dimension(Integer.MAX_VALUE, 210));
         lower.add(buildStatusSummary());
         lower.add(buildOverviewAction());
-        page.add(lower, BorderLayout.CENTER);
+        lower.setMinimumSize(new Dimension(0, 210));
+        content.add(lower);
+        content.add(javax.swing.Box.createVerticalGlue());
+        page.add(content, BorderLayout.CENTER);
         return page;
     }
 
     private JPanel buildSummaryCards() {
         JPanel cards = new JPanel(new GridLayout(1, 3, 14, 0));
         cards.setOpaque(false);
+        cards.setPreferredSize(new Dimension(900, 128));
+        cards.setMaximumSize(new Dimension(Integer.MAX_VALUE, 128));
         cards.add(createStatCard("TOTAL CAPACITY", capacityValue, capacityHint));
         cards.add(createStatCard("TICKETS SOLD", soldValue, soldHint));
         cards.add(createStatCard("EST. REVENUE", revenueValue, revenueHint));
@@ -295,6 +340,8 @@ public class AdminDashboardPanel extends JPanel {
     private void addSummaryLine(JPanel panel, String label, String value, Color color) {
         JPanel row = new JPanel(new BorderLayout());
         row.setOpaque(false);
+        row.setAlignmentX(LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
         JLabel name = new JLabel(label);
         ViewStyles.styleSecondaryText(name, 13f);
         JLabel count = new JLabel(value);
@@ -309,22 +356,28 @@ public class AdminDashboardPanel extends JPanel {
         JPanel panel = sectionPanel("Event workspace");
         JLabel message = new JLabel("Review your inventory, manage ticket tiers, and follow sales.");
         ViewStyles.styleSecondaryText(message, 13f);
+        message.setAlignmentX(LEFT_ALIGNMENT);
         panel.add(message);
         JButton open = new JButton("Open event inventory");
         ViewStyles.stylePrimaryButton(open);
+        open.setAlignmentX(LEFT_ALIGNMENT);
+        open.setMaximumSize(new Dimension(230, 42));
         open.addActionListener(action -> showPage("Manage Events"));
         panel.add(open);
         return panel;
     }
 
     private JPanel sectionPanel(String title) {
-        JPanel panel = new JPanel(new GridLayout(0, 1, 0, 12));
+        JPanel panel = new JPanel();
+        panel.setLayout(new javax.swing.BoxLayout(panel, javax.swing.BoxLayout.Y_AXIS));
+        panel.setAlignmentX(LEFT_ALIGNMENT);
         panel.setBackground(new Color(0x17, 0x1B, 0x24));
         panel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(0x2A, 0x30, 0x44)),
                 new EmptyBorder(16, 17, 16, 17)));
         JLabel heading = new JLabel(title);
         ViewStyles.styleHeading(heading, 15f);
+        heading.setAlignmentX(LEFT_ALIGNMENT);
         panel.add(heading);
         return panel;
     }
