@@ -6,9 +6,11 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.GridLayout;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -28,16 +30,17 @@ import javax.swing.JFileChooser;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
-import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
-import javax.swing.ImageIcon;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
@@ -53,7 +56,19 @@ public class AdminDashboardPanel extends JPanel {
     private final String hostId;
     private final JPanel eventList = new JPanel();
     private final JPanel eventState = new JPanel(new java.awt.CardLayout());
-    private final JTabbedPane tabs = new JTabbedPane();
+    private final java.awt.CardLayout pageLayout = new java.awt.CardLayout();
+    private final JPanel pages = new JPanel(pageLayout);
+    private final Map<String, JButton> navButtons = new LinkedHashMap<>();
+    private final JLabel pageTitle = new JLabel("Active Events Inventory");
+    private final JLabel pageDescription = new JLabel("Manage and monitor your events");
+    private final JLabel capacityValue = new JLabel("0");
+    private final JLabel soldValue = new JLabel("0");
+    private final JLabel revenueValue = new JLabel("KES 0");
+    private final JLabel capacityHint = new JLabel("across active events");
+    private final JLabel soldHint = new JLabel("0% sell-through");
+    private final JLabel revenueHint = new JLabel("before platform fees");
+    private final JButton createEventButton = new JButton("+  Create New Event");
+    private String activePage = "Manage Events";
     private final JTextField titleField = new JTextField(28);
     private final JTextField dateField = new JTextField(28);
     private final JTextField venueField = new JTextField(28);
@@ -104,61 +119,218 @@ public class AdminDashboardPanel extends JPanel {
                 + event.getCategory() + " " + event.getDate()).toLowerCase(java.util.Locale.ROOT).contains(query))
             .filter(this::matchesDateRange)
             .toList();
-        for (Event event : events) {
-            eventList.add(createEventCard(event));
-            eventList.add(javax.swing.Box.createVerticalStrut(12));
-        }
-        if (events.isEmpty() && !allEvents.isEmpty()) {
-            JLabel noMatches = new JLabel("No events match these filters.", JLabel.CENTER);
-            ViewStyles.styleSecondaryText(noMatches, 15f);
-            noMatches.setAlignmentX(CENTER_ALIGNMENT);
-            eventList.add(noMatches);
-        }
+        for (Event event : events) eventList.add(createInventoryRow(event));
+        updateSummary(allEvents);
         java.awt.CardLayout layout = (java.awt.CardLayout) eventState.getLayout();
-        layout.show(eventState, allEvents.isEmpty() ? "empty" : "events");
+        layout.show(eventState, allEvents.isEmpty() ? "empty" : events.isEmpty() ? "filtered" : "eventsTable");
         eventList.revalidate();
         eventList.repaint();
     }
 
     private void buildPanel(String hostName) {
-        setLayout(new BorderLayout(0, 14));
-        setBackground(ViewStyles.BACKGROUND);
-        setBorder(new EmptyBorder(20, 26, 22, 26));
+        setLayout(new BorderLayout());
+        setBackground(new Color(0x0F, 0x11, 0x17));
+        add(buildSidebar(hostName), BorderLayout.WEST);
 
-        JPanel header = new JPanel(new BorderLayout());
-        header.setOpaque(false);
-        JPanel headings = new JPanel(new java.awt.GridLayout(2, 1, 0, 3));
-        headings.setOpaque(false);
-        JLabel title = new JLabel("Host dashboard");
-        ViewStyles.styleHeading(title, 24f);
-        JLabel host = new JLabel(hostName);
-        ViewStyles.styleSecondaryText(host, 14f);
-        headings.add(title);
-        headings.add(host);
-        header.add(headings, BorderLayout.WEST);
-        JButton logout = new JButton("Log out");
-        ViewStyles.styleSecondaryButton(logout);
-        logout.addActionListener(action -> logoutAction.run());
-        header.add(logout, BorderLayout.EAST);
-        add(header, BorderLayout.NORTH);
+        JPanel workspace = new JPanel(new BorderLayout(0, 18));
+        workspace.setBackground(new Color(0x0F, 0x11, 0x17));
+        workspace.setBorder(new EmptyBorder(24, 28, 24, 28));
+        workspace.add(buildTopBar(), BorderLayout.NORTH);
 
-        tabs.addTab("My Events", buildOverview());
-        tabs.addTab("Create / Edit Event", buildManagementForm());
-        add(tabs, BorderLayout.CENTER);
+        pages.setBackground(new Color(0x0F, 0x11, 0x17));
+        pages.add(buildOverviewPage(), "Overview");
+        pages.add(buildManageEventsPage(), "Manage Events");
+        pages.add(buildUsersPage(), "Users");
+        pages.add(buildSettingsPage(hostName), "Settings");
+        pages.add(buildManagementForm(), "Editor");
+        workspace.add(pages, BorderLayout.CENTER);
+        add(workspace, BorderLayout.CENTER);
+        showPage("Manage Events");
     }
 
-    private JPanel buildOverview() {
-        eventList.setLayout(new javax.swing.BoxLayout(eventList, javax.swing.BoxLayout.Y_AXIS));
-        eventList.setBackground(ViewStyles.BACKGROUND);
-        eventList.setBorder(new EmptyBorder(4, 4, 4, 4));
-        JScrollPane scroll = new JScrollPane(eventList);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
-        scroll.getViewport().setBackground(ViewStyles.BACKGROUND);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-        eventState.add(scroll, "events");
+    private JPanel buildSidebar(String name) {
+        JPanel sidebar = new JPanel(new BorderLayout());
+        sidebar.setPreferredSize(new Dimension(224, 0));
+        sidebar.setBackground(new Color(0x17, 0x1B, 0x24));
+        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(0x2A, 0x30, 0x44)));
 
+        JPanel brand = new JPanel(new GridLayout(2, 1, 0, 5));
+        brand.setOpaque(false);
+        brand.setBorder(new EmptyBorder(24, 18, 24, 14));
+        JLabel eyebrow = new JLabel("ADMIN PANEL");
+        eyebrow.setForeground(new Color(0x88, 0x96, 0xB3));
+        eyebrow.setFont(new Font(Font.MONOSPACED, Font.BOLD, 10));
+        JLabel logo = new JLabel("SakaTickets");
+        ViewStyles.styleHeading(logo, 16f);
+        brand.add(eyebrow);
+        brand.add(logo);
+        sidebar.add(brand, BorderLayout.NORTH);
+
+        JPanel navigation = new JPanel(new GridLayout(0, 1, 0, 5));
+        navigation.setOpaque(false);
+        navigation.setBorder(new EmptyBorder(0, 8, 10, 8));
+        for (String item : List.of("Overview", "Manage Events", "Users", "Settings")) {
+            JButton button = new JButton(item);
+            button.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+            button.setFocusPainted(false);
+            button.setBorder(BorderFactory.createEmptyBorder(11, 13, 11, 8));
+            button.setOpaque(true);
+            button.addActionListener(action -> showPage(item));
+            navButtons.put(item, button);
+            navigation.add(button);
+        }
+        sidebar.add(navigation, BorderLayout.CENTER);
+
+        JPanel account = new JPanel(new BorderLayout(9, 0));
+        account.setOpaque(false);
+        account.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(0x2A, 0x30, 0x44)),
+                new EmptyBorder(15, 15, 18, 12)));
+        JLabel avatar = new JLabel(name.isBlank() ? "A" : name.substring(0, 1).toUpperCase());
+        avatar.setOpaque(true);
+        avatar.setBackground(new Color(0x00, 0xB4, 0xFF));
+        avatar.setForeground(Color.WHITE);
+        avatar.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        avatar.setPreferredSize(new Dimension(30, 30));
+        JLabel accountName = new JLabel(name);
+        ViewStyles.styleHeading(accountName, 12f);
+        JLabel accountLabel = new JLabel("Event host");
+        ViewStyles.styleSecondaryText(accountLabel, 10f);
+        JPanel accountText = new JPanel(new GridLayout(2, 1, 0, 2));
+        accountText.setOpaque(false);
+        accountText.add(accountName);
+        accountText.add(accountLabel);
+        account.add(avatar, BorderLayout.WEST);
+        account.add(accountText, BorderLayout.CENTER);
+        JButton logout = smallButton("Log out");
+        logout.addActionListener(action -> logoutAction.run());
+        account.add(logout, BorderLayout.SOUTH);
+        sidebar.add(account, BorderLayout.SOUTH);
+        return sidebar;
+    }
+
+    private JPanel buildTopBar() {
+        JPanel top = new JPanel(new BorderLayout(14, 0));
+        top.setOpaque(false);
+        JPanel labels = new JPanel(new GridLayout(2, 1, 0, 3));
+        labels.setOpaque(false);
+        ViewStyles.styleHeading(pageTitle, 20f);
+        ViewStyles.styleSecondaryText(pageDescription, 12f);
+        labels.add(pageTitle);
+        labels.add(pageDescription);
+        top.add(labels, BorderLayout.WEST);
+        ViewStyles.stylePrimaryButton(createEventButton);
+        createEventButton.addActionListener(action -> {
+            if ("Editor".equals(activePage)) {
+                showPage("Manage Events");
+            } else {
+                startNewEvent();
+            }
+        });
+        top.add(createEventButton, BorderLayout.EAST);
+        return top;
+    }
+
+    private JPanel buildOverviewPage() {
+        JPanel page = new JPanel(new BorderLayout(0, 18));
+        page.setOpaque(false);
+        page.add(buildSummaryCards(), BorderLayout.NORTH);
+        JPanel lower = new JPanel(new GridLayout(1, 2, 14, 0));
+        lower.setOpaque(false);
+        lower.add(buildStatusSummary());
+        lower.add(buildOverviewAction());
+        page.add(lower, BorderLayout.CENTER);
+        return page;
+    }
+
+    private JPanel buildSummaryCards() {
+        JPanel cards = new JPanel(new GridLayout(1, 3, 14, 0));
+        cards.setOpaque(false);
+        cards.add(createStatCard("TOTAL CAPACITY", capacityValue, capacityHint));
+        cards.add(createStatCard("TICKETS SOLD", soldValue, soldHint));
+        cards.add(createStatCard("EST. REVENUE", revenueValue, revenueHint));
+        return cards;
+    }
+
+    private JPanel createStatCard(String label, JLabel value, JLabel hint) {
+        JPanel card = new JPanel(new GridLayout(3, 1, 0, 5));
+        card.setBackground(new Color(0x17, 0x1B, 0x24));
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(0x2A, 0x30, 0x44)),
+                new EmptyBorder(15, 16, 14, 16)));
+        JLabel caption = new JLabel(label);
+        caption.setForeground(new Color(0x88, 0x96, 0xB3));
+        caption.setFont(new Font(Font.MONOSPACED, Font.BOLD, 10));
+        value.setForeground(new Color(0x00, 0xB4, 0xFF));
+        value.setFont(new Font(Font.MONOSPACED, Font.BOLD, 22));
+        ViewStyles.styleSecondaryText(hint, 11f);
+        card.add(caption);
+        card.add(value);
+        card.add(hint);
+        return card;
+    }
+
+    private JPanel buildStatusSummary() {
+        JPanel panel = sectionPanel("Inventory status");
+        int onSale = (int) eventManager.getEventsByHostId(hostId).stream()
+                .filter(event -> !event.isArchived() && "ON_SALE".equals(event.getStatus())).count();
+        int soldOut = (int) eventManager.getEventsByHostId(hostId).stream()
+                .filter(event -> !event.isArchived() && "SOLD_OUT".equals(event.getStatus())).count();
+        addSummaryLine(panel, "On sale", Integer.toString(onSale), new Color(0x00, 0xE0, 0xA0));
+        addSummaryLine(panel, "Sold out", Integer.toString(soldOut), new Color(0xFF, 0x4D, 0x6A));
+        return panel;
+    }
+
+    private void addSummaryLine(JPanel panel, String label, String value, Color color) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+        JLabel name = new JLabel(label);
+        ViewStyles.styleSecondaryText(name, 13f);
+        JLabel count = new JLabel(value);
+        count.setForeground(color);
+        count.setFont(new Font(Font.MONOSPACED, Font.BOLD, 16));
+        row.add(name, BorderLayout.WEST);
+        row.add(count, BorderLayout.EAST);
+        panel.add(row);
+    }
+
+    private JPanel buildOverviewAction() {
+        JPanel panel = sectionPanel("Event workspace");
+        JLabel message = new JLabel("Review your inventory, manage ticket tiers, and follow sales.");
+        ViewStyles.styleSecondaryText(message, 13f);
+        panel.add(message);
+        JButton open = new JButton("Open event inventory");
+        ViewStyles.stylePrimaryButton(open);
+        open.addActionListener(action -> showPage("Manage Events"));
+        panel.add(open);
+        return panel;
+    }
+
+    private JPanel sectionPanel(String title) {
+        JPanel panel = new JPanel(new GridLayout(0, 1, 0, 12));
+        panel.setBackground(new Color(0x17, 0x1B, 0x24));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(0x2A, 0x30, 0x44)),
+                new EmptyBorder(16, 17, 16, 17)));
+        JLabel heading = new JLabel(title);
+        ViewStyles.styleHeading(heading, 15f);
+        panel.add(heading);
+        return panel;
+    }
+
+    private JPanel buildManageEventsPage() {
+        JPanel page = new JPanel(new BorderLayout(0, 12));
+        page.setOpaque(false);
+        page.add(buildFilters(), BorderLayout.NORTH);
+        eventList.setLayout(new javax.swing.BoxLayout(eventList, javax.swing.BoxLayout.Y_AXIS));
+        eventList.setBackground(new Color(0x17, 0x1B, 0x24));
+        eventList.setBorder(new EmptyBorder(2, 2, 2, 2));
+        JScrollPane scroll = new JScrollPane(eventList);
+        scroll.setBorder(BorderFactory.createLineBorder(new Color(0x2A, 0x30, 0x44)));
+        scroll.getViewport().setBackground(new Color(0x17, 0x1B, 0x24));
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
         JPanel empty = new JPanel(new java.awt.GridBagLayout());
-        empty.setBackground(ViewStyles.BACKGROUND);
+        empty.setBackground(new Color(0x17, 0x1B, 0x24));
         JPanel message = new JPanel();
         message.setOpaque(false);
         message.setLayout(new javax.swing.BoxLayout(message, javax.swing.BoxLayout.Y_AXIS));
@@ -180,20 +352,35 @@ public class AdminDashboardPanel extends JPanel {
         empty.add(message);
         eventState.add(empty, "empty");
 
+        JPanel filtered = new JPanel(new GridBagLayout());
+        filtered.setBackground(new Color(0x17, 0x1B, 0x24));
+        JLabel filteredMessage = new JLabel("No events match these filters.");
+        ViewStyles.styleSecondaryText(filteredMessage, 14f);
+        filtered.add(filteredMessage);
+        eventState.add(filtered, "filtered");
+
+        JPanel table = new JPanel(new BorderLayout());
+        table.setBackground(new Color(0x17, 0x1B, 0x24));
+        table.add(buildInventoryHeader(), BorderLayout.NORTH);
+        table.add(scroll, BorderLayout.CENTER);
+        eventState.add(table, "eventsTable");
+        page.add(eventState, BorderLayout.CENTER);
+        return page;
+    }
+
+    private JPanel buildFilters() {
         ViewStyles.styleInput(searchField);
         ViewStyles.styleInput(dateFromFilter);
         ViewStyles.styleInput(dateToFilter);
         archivedToggle.setOpaque(false);
-        archivedToggle.setForeground(ViewStyles.FOREGROUND);
-        JButton applyFilters = new JButton("Filter");
-        ViewStyles.styleSecondaryButton(applyFilters);
+        archivedToggle.setForeground(new Color(0xF0, 0xF4, 0xFF));
+        JButton applyFilters = smallButton("Apply filters");
         applyFilters.addActionListener(action -> refreshEvents());
         searchField.addActionListener(action -> refreshEvents());
         statusFilter.addActionListener(action -> refreshEvents());
         archivedToggle.addActionListener(action -> refreshEvents());
-        JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+        JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         filters.setOpaque(false);
-        filters.add(new JLabel("Search"));
         filters.add(searchField);
         filters.add(statusFilter);
         filters.add(new JLabel("From"));
@@ -202,12 +389,223 @@ public class AdminDashboardPanel extends JPanel {
         filters.add(dateToFilter);
         filters.add(archivedToggle);
         filters.add(applyFilters);
+        return filters;
+    }
 
-        JPanel overview = new JPanel(new BorderLayout(0, 10));
-        overview.setBackground(ViewStyles.BACKGROUND);
-        overview.add(filters, BorderLayout.NORTH);
-        overview.add(eventState, BorderLayout.CENTER);
-        return overview;
+    private JPanel buildInventoryHeader() {
+        JPanel header = new JPanel(new GridBagLayout());
+        header.setBackground(new Color(0x17, 0x1B, 0x24));
+        header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(0x2A, 0x30, 0x44)));
+        String[] labels = {"EVENT NAME", "DATE", "CAPACITY", "SOLD", "REMAINING", "STATUS", "ACTION"};
+        double[] weights = {.30, .12, .10, .17, .10, .11, .10};
+        for (int index = 0; index < labels.length; index++) {
+            JLabel label = new JLabel(labels[index]);
+            label.setForeground(new Color(0x88, 0x96, 0xB3));
+            label.setFont(new Font(Font.MONOSPACED, Font.BOLD, 9));
+            GridBagConstraints constraints = columnConstraints(index, weights[index]);
+            constraints.insets = new Insets(12, 10, 12, 6);
+            header.add(label, constraints);
+        }
+        return header;
+    }
+
+    private JPanel createInventoryRow(Event event) {
+        JPanel row = new JPanel(new GridBagLayout());
+        row.setBackground(new Color(0x17, 0x1B, 0x24));
+        row.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(0x1E, 0x24, 0x33)));
+        int capacity = event.getTicketTiers().stream().mapToInt(TicketTier::getInitialCapacity).sum();
+        int sold = orderManager.calculateTotalTicketsSold(event.getEventId());
+        int remaining = Math.max(0, capacity - sold);
+        int percentage = capacity == 0 ? 0 : Math.min(100, (int) Math.round(sold * 100.0 / capacity));
+
+        JPanel eventInfo = new JPanel(new GridLayout(2, 1, 0, 3));
+        eventInfo.setOpaque(false);
+        JLabel name = new JLabel(event.getTitle());
+        ViewStyles.styleHeading(name, 12f);
+        JLabel category = new JLabel(event.getCategory());
+        ViewStyles.styleSecondaryText(category, 10f);
+        eventInfo.add(name);
+        eventInfo.add(category);
+        row.add(eventInfo, columnConstraints(0, .30));
+
+        JLabel date = monoLabel(event.getDate(), new Color(0x88, 0x96, 0xB3));
+        row.add(date, columnConstraints(1, .12));
+        row.add(monoLabel(Integer.toString(capacity), new Color(0xF0, 0xF4, 0xFF)), columnConstraints(2, .10));
+
+        JPanel sales = new JPanel(new GridLayout(2, 1, 0, 3));
+        sales.setOpaque(false);
+        sales.add(monoLabel(Integer.toString(sold), new Color(0xF0, 0xF4, 0xFF)));
+        JProgressBar progress = new JProgressBar(0, 100);
+        progress.setValue(percentage);
+        progress.setStringPainted(false);
+        progress.setPreferredSize(new Dimension(90, 4));
+        progress.setBorderPainted(false);
+        progress.setBackground(new Color(0x2A, 0x30, 0x44));
+        progress.setForeground(percentage >= 100 ? new Color(0xFF, 0x4D, 0x6A) : new Color(0x00, 0xB4, 0xFF));
+        sales.add(progress);
+        row.add(sales, columnConstraints(3, .17));
+        row.add(monoLabel(Integer.toString(remaining), remaining == 0
+                ? new Color(0xFF, 0x4D, 0x6A) : new Color(0x00, 0xE0, 0xA0)), columnConstraints(4, .10));
+
+        JLabel status = new JLabel(statusText(event.getStatus()));
+        status.setForeground(statusColor(event.getStatus()));
+        status.setFont(new Font(Font.MONOSPACED, Font.BOLD, 9));
+        row.add(status, columnConstraints(5, .11));
+        row.add(buildRowActions(event), columnConstraints(6, .10));
+        for (java.awt.Component component : row.getComponents()) {
+            if (component instanceof javax.swing.JComponent swingComponent) {
+                swingComponent.setBorder(new EmptyBorder(10, 10, 10, 6));
+            }
+        }
+        return row;
+    }
+
+    private JPanel buildRowActions(Event event) {
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+        actions.setOpaque(false);
+        JButton edit = smallButton("Edit");
+        edit.addActionListener(action -> loadEvent(event));
+        JButton more = smallButton("···");
+        JPopupMenu menu = new JPopupMenu();
+        JMenuItem attendeeItem = new JMenuItem("View attendees");
+        attendeeItem.addActionListener(action -> showAttendees(event));
+        JMenuItem exportItem = new JMenuItem("Export CSV");
+        exportItem.addActionListener(action -> exportAttendees(event));
+        JMenuItem duplicateItem = new JMenuItem("Duplicate event");
+        duplicateItem.addActionListener(action -> duplicateEvent(event));
+        JMenuItem archiveItem = new JMenuItem(event.isArchived() ? "Restore event" : "Archive event");
+        archiveItem.addActionListener(action -> toggleArchive(event));
+        menu.add(attendeeItem);
+        menu.add(exportItem);
+        menu.add(duplicateItem);
+        menu.add(archiveItem);
+        more.addActionListener(action -> menu.show(more, 0, more.getHeight()));
+        actions.add(edit);
+        actions.add(more);
+        return actions;
+    }
+
+    private GridBagConstraints columnConstraints(int column, double weight) {
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridx = column;
+        constraints.weightx = weight;
+        constraints.fill = GridBagConstraints.HORIZONTAL;
+        constraints.anchor = GridBagConstraints.WEST;
+        return constraints;
+    }
+
+    private JLabel monoLabel(String text, Color color) {
+        JLabel label = new JLabel(text);
+        label.setForeground(color);
+        label.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
+        return label;
+    }
+
+    private String statusText(String status) {
+        return switch (status) {
+            case "ON_SALE" -> "ON SALE";
+            case "SOLD_OUT" -> "SOLD OUT";
+            case "CANCELLED" -> "CANCELLED";
+            default -> "PAUSED";
+        };
+    }
+
+    private void updateSummary(List<Event> events) {
+        int capacity = events.stream().filter(event -> !event.isArchived())
+                .flatMap(event -> event.getTicketTiers().stream())
+                .mapToInt(TicketTier::getInitialCapacity).sum();
+        int sold = events.stream().filter(event -> !event.isArchived())
+                .mapToInt(event -> orderManager.calculateTotalTicketsSold(event.getEventId())).sum();
+        double revenue = events.stream().filter(event -> !event.isArchived())
+                .mapToDouble(event -> orderManager.calculateEventRevenue(event.getEventId())).sum();
+        capacityValue.setText(String.format("%,d", capacity));
+        soldValue.setText(String.format("%,d", sold));
+        revenueValue.setText(String.format("KES %,.0f", revenue));
+        soldHint.setText((capacity == 0 ? 0 : Math.round(sold * 100.0 / capacity)) + "% sell-through");
+        capacityHint.setText(events.stream().filter(event -> !event.isArchived()).count() + " active events");
+    }
+
+    private JPanel buildUsersPage() {
+        JPanel page = new JPanel(new BorderLayout(0, 12));
+        page.setOpaque(false);
+        JLabel heading = new JLabel("Guest customers");
+        ViewStyles.styleHeading(heading, 16f);
+        page.add(heading, BorderLayout.NORTH);
+        String[] columns = {"Event", "Guest", "Email", "Ticket tier", "Tickets", "Total (KES)"};
+        DefaultTableModel model = new DefaultTableModel(columns, 0) {
+            @Override public boolean isCellEditable(int row, int column) { return false; }
+        };
+        JTable table = new JTable(model);
+        table.setFillsViewportHeight(true);
+        page.add(new JScrollPane(table), BorderLayout.CENTER);
+        return page;
+    }
+
+    private JPanel buildSettingsPage(String name) {
+        JPanel page = new JPanel(new BorderLayout());
+        page.setOpaque(false);
+        JPanel settings = sectionPanel("Host account");
+        JLabel nameLabel = new JLabel("Signed in as " + name);
+        ViewStyles.styleSecondaryText(nameLabel, 13f);
+        settings.add(nameLabel);
+        JLabel idLabel = new JLabel("Account ID: " + hostId);
+        ViewStyles.styleSecondaryText(idLabel, 12f);
+        settings.add(idLabel);
+        JLabel themeLabel = new JLabel("Appearance: Dark");
+        ViewStyles.styleSecondaryText(themeLabel, 12f);
+        settings.add(themeLabel);
+        page.add(settings, BorderLayout.NORTH);
+        return page;
+    }
+
+    private void showPage(String page) {
+        activePage = page;
+        String title = switch (page) {
+            case "Overview" -> "Overview";
+            case "Users" -> "Guest Customers";
+            case "Settings" -> "Settings";
+            case "Editor" -> editingEvent == null ? "Create New Event" : "Edit Event";
+            default -> "Active Events Inventory";
+        };
+        pageTitle.setText(title);
+        pageDescription.setText(switch (page) {
+            case "Overview" -> "Your ticket sales at a glance";
+            case "Users" -> "Guests who have booked your events";
+            case "Settings" -> "Account and appearance";
+            case "Editor" -> "Configure event details and ticket tiers";
+            default -> "Manage and monitor all active events";
+        });
+        createEventButton.setText("Editor".equals(page) ? "Back to events" : "+  Create New Event");
+        for (Map.Entry<String, JButton> entry : navButtons.entrySet()) {
+            boolean selected = entry.getKey().equals(page) || "Editor".equals(page) && "Manage Events".equals(entry.getKey());
+            JButton button = entry.getValue();
+            button.setBackground(selected ? new Color(0x00, 0xB4, 0xFF, 28) : new Color(0x17, 0x1B, 0x24));
+            button.setForeground(selected ? new Color(0x00, 0xB4, 0xFF) : new Color(0x88, 0x96, 0xB3));
+            button.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 2, 0, 0,
+                            selected ? new Color(0x00, 0xB4, 0xFF) : new Color(0x17, 0x1B, 0x24)),
+                    new EmptyBorder(11, 11, 11, 8)));
+        }
+        if (pages.getComponentCount() > 0) {
+            pageLayout.show(pages, page);
+        }
+        if ("Users".equals(page)) refreshGuestTable();
+        revalidate();
+        repaint();
+    }
+
+    private void refreshGuestTable() {
+        JPanel page = (JPanel) pages.getComponent(2);
+        JScrollPane scroll = (JScrollPane) page.getComponent(1);
+        JTable table = (JTable) scroll.getViewport().getView();
+        DefaultTableModel model = (DefaultTableModel) table.getModel();
+        model.setRowCount(0);
+        for (Event event : eventManager.getEventsByHostId(hostId)) {
+            for (var booking : orderManager.getBookingsByEvent(event.getEventId())) {
+                model.addRow(new Object[] {event.getTitle(), booking.getCustomerName(), booking.getCustomerEmail(),
+                        booking.getTierName(), booking.getQuantity(), booking.getTotalPrice()});
+            }
+        }
     }
 
     private boolean matchesDateRange(Event event) {
@@ -222,69 +620,6 @@ public class AdminDashboardPanel extends JPanel {
         }
     }
 
-    private JPanel createEventCard(Event event) {
-        JPanel card = new JPanel(new BorderLayout(12, 8));
-        card.setBackground(ViewStyles.SURFACE);
-        card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(1, 5, 1, 1, eventAccent(event)),
-            new EmptyBorder(12, 14, 12, 14)));
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 176));
-
-        JPanel titleRow = new JPanel(new BorderLayout());
-        titleRow.setOpaque(false);
-        JLabel title = new JLabel(event.getTitle());
-        ViewStyles.styleHeading(title, 17f);
-        titleRow.add(title, BorderLayout.WEST);
-        JLabel status = new JLabel(event.getStatus().replace('_', ' '));
-        status.setOpaque(true);
-        status.setForeground(Color.WHITE);
-        status.setBackground(statusColor(event.getStatus()));
-        status.setBorder(new EmptyBorder(4, 9, 4, 9));
-        titleRow.add(status, BorderLayout.EAST);
-        card.add(titleRow, BorderLayout.NORTH);
-
-        int capacity = event.getTicketTiers().stream().mapToInt(TicketTier::getInitialCapacity).sum();
-        JLabel metrics = new JLabel(String.format(
-                "%s  |  %s  |  %s  |  Tickets sold: %d / %d  |  Revenue: KES %,.2f",
-                event.getCategory(), event.getDate(), event.getVenue(),
-                orderManager.calculateTotalTicketsSold(event.getEventId()), capacity,
-                orderManager.calculateEventRevenue(event.getEventId())));
-        ViewStyles.styleSecondaryText(metrics, 13f);
-        card.add(metrics, BorderLayout.CENTER);
-
-        JButton manage = smallButton("Edit");
-        manage.addActionListener(action -> loadEvent(event));
-        JButton attendees = smallButton("Attendees");
-        attendees.addActionListener(action -> showAttendees(event));
-        JButton export = smallButton("Export CSV");
-        export.addActionListener(action -> exportAttendees(event));
-        JButton duplicate = smallButton("Duplicate");
-        duplicate.addActionListener(action -> duplicateEvent(event));
-        JButton archive = smallButton(event.isArchived() ? "Restore" : "Archive");
-        archive.addActionListener(action -> toggleArchive(event));
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        actions.setOpaque(false);
-        actions.add(manage);
-        actions.add(attendees);
-        actions.add(export);
-        actions.add(duplicate);
-        actions.add(archive);
-        card.add(actions, BorderLayout.SOUTH);
-
-        if (!event.getBannerImagePath().isBlank()) {
-            java.io.File imageFile = new java.io.File(event.getBannerImagePath());
-            if (imageFile.isFile()) {
-                ImageIcon source = new ImageIcon(event.getBannerImagePath());
-                ImageIcon scaled = new ImageIcon(source.getImage().getScaledInstance(112, 78,
-                        java.awt.Image.SCALE_SMOOTH));
-                JLabel banner = new JLabel(scaled);
-                banner.setBorder(new EmptyBorder(0, 0, 0, 12));
-                card.add(banner, BorderLayout.WEST);
-            }
-        }
-        return card;
-    }
-
     private JButton smallButton(String text) {
         JButton button = new JButton(text);
         ViewStyles.styleSecondaryButton(button);
@@ -292,14 +627,6 @@ public class AdminDashboardPanel extends JPanel {
         button.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ViewStyles.OUTLINE), new EmptyBorder(5, 8, 5, 8)));
         return button;
-    }
-
-    private Color eventAccent(Event event) {
-        try {
-            return Color.decode(event.getAccentColorHex());
-        } catch (RuntimeException exception) {
-            return ViewStyles.ACCENT;
-        }
     }
 
     private void showAttendees(Event event) {
@@ -767,7 +1094,7 @@ public class AdminDashboardPanel extends JPanel {
         }
         refreshEvents();
         startNewEvent();
-        tabs.setSelectedIndex(0);
+        showPage("Manage Events");
         JOptionPane.showMessageDialog(this, "Event saved successfully.", "Event Saved",
                 JOptionPane.INFORMATION_MESSAGE);
     }
@@ -796,7 +1123,7 @@ public class AdminDashboardPanel extends JPanel {
                     tier.getInitialCapacity(), tier.getAvailableSeats()));
         }
         clearTierEditor();
-        tabs.setSelectedIndex(1);
+        showPage("Editor");
     }
 
     private void startNewEvent() {
@@ -815,7 +1142,7 @@ public class AdminDashboardPanel extends JPanel {
         tierModel.clear();
         tierList.clearSelection();
         clearTierEditor();
-        tabs.setSelectedIndex(1);
+        showPage("Editor");
     }
 
     private void showError(String message) {
