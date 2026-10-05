@@ -53,3 +53,80 @@ The project is cleanly separated into decoupled packages to ensure maintainabili
    ```bash
    git clone [https://github.com/yourusername/sakatickets.git](https://github.com/yourusername/sakatickets.git)
    cd sakatickets
+
+```markdown
+# Local Setup & Installation Guide
+
+Follow the instructions below to download, configure, and run **SakaTickets** on your local machine using either **Visual Studio Code** or **Apache NetBeans**.
+
+---
+
+## Prerequisites
+* **Java Development Kit (JDK):** Version 17 or higher installed on your machine.
+* **Git:** Installed to clone the project repository.
+
+---
+
+## Method A: Setting up in Visual Studio Code (VS Code)
+
+1. **Clone the Repository**
+   Open your terminal or command prompt and clone the project:
+   ```bash
+   git clone [https://github.com/yourusername/sakatickets.git](https://github.com/yourusername/sakatickets.git)
+   cd sakatickets
+
+```
+
+2. **Open in VS Code**
+Launch VS Code and open the root project folder:
+```bash
+code .
+
+```
+
+3. **Install Extensions**
+Ensure you have the official **Extension Pack for Java** (by Microsoft) installed in VS Code to automatically resolve dependencies and build paths.
+4. **Run the Application**
+* Expand the folder structure in the left sidebar and navigate to `src/Main.java`.
+
+
+* Click the **Run** button that automatically appears right above the `public static void main` method. VS Code will compile the packages and launch the application window.
+
+
+---
+
+## Method B: Setting up in Apache NetBeans
+
+1. **Create a New Project**
+* Open Apache NetBeans.
+* Go to **File > New Project...** (or press `Ctrl+Shift+N`).
+* Select **Java with Ant** (or Maven, if using a `pom.xml` configuration) and choose **Java Application**. Click **Next**.
+* Name your project `SakaTickets`, set your project location, and uncheck the box labeled **Create Main Class**. Click **Finish**.
+
+
+2. **Import Source Files**
+* Locate the `src` folder inside your cloned repository.
+* Copy all packages (`controllers`, `models`, `views`) and files (`Main.java`) from the repository's `src` folder directly into the `src` directory of your newly created NetBeans project.
+
+
+3. **Configure the Main Class**
+* In NetBeans' left-hand **Projects** tab, right-click the `SakaTickets` project and select **Properties**.
+* Navigate to the **Run** category under Categories.
+* For the **Main Class** field, click **Browse** and select `Main` (or type `Main`). Click **OK**.
+
+
+4. **Build and Run**
+* Click the green **Play** button (Run Project) on the top NetBeans toolbar, or press `F6`. NetBeans will compile and launch the application interface.
+
+
+
+---
+
+## Default Admin Credentials
+
+To test the host workspace, create events, and inspect sales analytics, use the default seeded account credentials upon logging in:
+
+* **Username:** `Talel`
+
+* **Password:** `admin123`
+
