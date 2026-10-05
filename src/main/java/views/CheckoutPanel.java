@@ -8,6 +8,7 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.time.LocalDate;
+import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -36,14 +37,26 @@ public class CheckoutPanel extends JPanel {
     private final JTextField emailField = new JTextField(20);
     private final JSpinner quantitySpinner = new JSpinner(new SpinnerNumberModel(1, 1, 1, 1));
     private final JComboBox<TicketTier> tierSelector = new JComboBox<>();
+    private final JPanel eventImage = new JPanel(new BorderLayout());
+    private final Consumer<Booking> bookingConfirmed;
     private JButton confirmButton;
     private Event selectedEvent;
     private TicketTier selectedTier;
 
     public CheckoutPanel(EventManager eventManager, OrderManager orderManager, Runnable returnToCatalog) {
+        this(eventManager, orderManager, returnToCatalog, booking -> {
+            JOptionPane.showMessageDialog(null, "Purchase confirmed. Receipt: " + booking.getBookingId(),
+                    "Booking successful", JOptionPane.INFORMATION_MESSAGE);
+            returnToCatalog.run();
+        });
+    }
+
+    public CheckoutPanel(EventManager eventManager, OrderManager orderManager, Runnable returnToCatalog,
+            Consumer<Booking> bookingConfirmed) {
         this.eventManager = eventManager;
         this.orderManager = orderManager;
         this.returnToCatalog = returnToCatalog;
+        this.bookingConfirmed = bookingConfirmed;
         buildView();
     }
 
@@ -69,6 +82,10 @@ public class CheckoutPanel extends JPanel {
         titleLabel.setText(selectedEvent.getTitle());
         dateLabel.setText(selectedEvent.getDate());
         venueLabel.setText(selectedEvent.getVenue());
+        eventImage.removeAll();
+        eventImage.add(EventVisuals.event(selectedEvent, 156, 9), BorderLayout.CENTER);
+        eventImage.revalidate();
+        eventImage.repaint();
         tierSelector.removeAllItems();
         selectedEvent.getTicketTiers().forEach(tierSelector::addItem);
         if (tierSelector.getItemCount() > 0) {
@@ -102,7 +119,7 @@ public class CheckoutPanel extends JPanel {
         details.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ViewStyles.OUTLINE),
                 new EmptyBorder(26, 24, 26, 24)));
-        details.setPreferredSize(new java.awt.Dimension(300, 340));
+        details.setPreferredSize(new java.awt.Dimension(330, 470));
 
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 0;
@@ -111,8 +128,15 @@ public class CheckoutPanel extends JPanel {
         constraints.fill = GridBagConstraints.HORIZONTAL;
         constraints.weightx = 1;
 
+        eventImage.setBackground(ViewStyles.INPUT);
+        eventImage.setPreferredSize(new java.awt.Dimension(280, 156));
+        eventImage.putClientProperty("FlatLaf.style", "arc: 9");
+        constraints.insets = new Insets(0, 0, 16, 0);
+        details.add(eventImage, constraints);
+
         ViewStyles.styleHeading(titleLabel, 24f);
         titleLabel.setBorder(new EmptyBorder(0, 0, 18, 0));
+        constraints.gridy++;
         details.add(titleLabel, constraints);
 
         constraints.gridy++;
@@ -273,10 +297,8 @@ public class CheckoutPanel extends JPanel {
 
         Booking booking = orderManager.createBooking(selectedEvent.getEventId(), nameField.getText().trim(),
             emailField.getText().trim(), selectedTier.getTierName(), quantity, selectedTier.getPrice() * quantity);
-        JOptionPane.showMessageDialog(this, "Purchase confirmed. Receipt: " + booking.getBookingId(),
-                "Booking successful", JOptionPane.INFORMATION_MESSAGE);
         clearForm();
-        returnToCatalog.run();
+        bookingConfirmed.accept(booking);
     }
 
     private void clearForm() {
