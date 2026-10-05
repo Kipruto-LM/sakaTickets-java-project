@@ -140,7 +140,6 @@ public class AdminDashboardPanel extends JPanel {
         pages.setBackground(new Color(0x0F, 0x11, 0x17));
         pages.add(buildOverviewPage(), "Overview");
         pages.add(buildManageEventsPage(), "Manage Events");
-        pages.add(buildUsersPage(), "Users");
         pages.add(buildSettingsPage(hostName), "Settings");
         pages.add(buildManagementForm(), "Editor");
         workspace.add(pages, BorderLayout.CENTER);
@@ -169,7 +168,7 @@ public class AdminDashboardPanel extends JPanel {
         JPanel navigation = new JPanel(new GridLayout(0, 1, 0, 5));
         navigation.setOpaque(false);
         navigation.setBorder(new EmptyBorder(0, 8, 10, 8));
-        for (String item : List.of("Overview", "Manage Events", "Users", "Settings")) {
+        for (String item : List.of("Overview", "Manage Events", "Settings")) {
             JButton button = new JButton(item);
             button.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
             button.setFocusPainted(false);
@@ -525,22 +524,6 @@ public class AdminDashboardPanel extends JPanel {
         capacityHint.setText(events.stream().filter(event -> !event.isArchived()).count() + " active events");
     }
 
-    private JPanel buildUsersPage() {
-        JPanel page = new JPanel(new BorderLayout(0, 12));
-        page.setOpaque(false);
-        JLabel heading = new JLabel("Guest customers");
-        ViewStyles.styleHeading(heading, 16f);
-        page.add(heading, BorderLayout.NORTH);
-        String[] columns = {"Event", "Guest", "Email", "Ticket tier", "Tickets", "Total (KES)"};
-        DefaultTableModel model = new DefaultTableModel(columns, 0) {
-            @Override public boolean isCellEditable(int row, int column) { return false; }
-        };
-        JTable table = new JTable(model);
-        table.setFillsViewportHeight(true);
-        page.add(new JScrollPane(table), BorderLayout.CENTER);
-        return page;
-    }
-
     private JPanel buildSettingsPage(String name) {
         JPanel page = new JPanel(new BorderLayout());
         page.setOpaque(false);
@@ -562,7 +545,6 @@ public class AdminDashboardPanel extends JPanel {
         activePage = page;
         String title = switch (page) {
             case "Overview" -> "Overview";
-            case "Users" -> "Guest Customers";
             case "Settings" -> "Settings";
             case "Editor" -> editingEvent == null ? "Create New Event" : "Edit Event";
             default -> "Active Events Inventory";
@@ -570,7 +552,6 @@ public class AdminDashboardPanel extends JPanel {
         pageTitle.setText(title);
         pageDescription.setText(switch (page) {
             case "Overview" -> "Your ticket sales at a glance";
-            case "Users" -> "Guests who have booked your events";
             case "Settings" -> "Account and appearance";
             case "Editor" -> "Configure event details and ticket tiers";
             default -> "Manage and monitor all active events";
@@ -589,23 +570,8 @@ public class AdminDashboardPanel extends JPanel {
         if (pages.getComponentCount() > 0) {
             pageLayout.show(pages, page);
         }
-        if ("Users".equals(page)) refreshGuestTable();
         revalidate();
         repaint();
-    }
-
-    private void refreshGuestTable() {
-        JPanel page = (JPanel) pages.getComponent(2);
-        JScrollPane scroll = (JScrollPane) page.getComponent(1);
-        JTable table = (JTable) scroll.getViewport().getView();
-        DefaultTableModel model = (DefaultTableModel) table.getModel();
-        model.setRowCount(0);
-        for (Event event : eventManager.getEventsByHostId(hostId)) {
-            for (var booking : orderManager.getBookingsByEvent(event.getEventId())) {
-                model.addRow(new Object[] {event.getTitle(), booking.getCustomerName(), booking.getCustomerEmail(),
-                        booking.getTierName(), booking.getQuantity(), booking.getTotalPrice()});
-            }
-        }
     }
 
     private boolean matchesDateRange(Event event) {
