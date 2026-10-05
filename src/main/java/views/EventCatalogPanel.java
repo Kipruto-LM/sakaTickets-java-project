@@ -2,6 +2,7 @@ package views;
 
 import controllers.EventManager;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -11,11 +12,13 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.ImageIcon;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.border.EmptyBorder;
 import models.Event;
+import models.TicketTier;
 
 public class EventCatalogPanel extends JPanel {
     private final EventManager eventManager;
@@ -57,7 +60,7 @@ public class EventCatalogPanel extends JPanel {
 
     public void refreshEvents() {
         eventList.removeAll();
-        for (Event event : eventManager.getEvents()) {
+        for (Event event : eventManager.getPublicEvents()) {
             JPanel card = createEventCard(event, checkoutAction);
             card.setAlignmentX(LEFT_ALIGNMENT);
             eventList.add(card);
@@ -71,10 +74,18 @@ public class EventCatalogPanel extends JPanel {
         JPanel card = new RoundedCardPanel();
         card.setLayout(new BorderLayout(24, 0));
         card.setBackground(ViewStyles.SURFACE);
-        card.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        Color accent;
+        try {
+            accent = Color.decode(event.getAccentColorHex());
+        } catch (RuntimeException exception) {
+            accent = ViewStyles.ACCENT;
+        }
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 5, 1, 1, accent),
+                BorderFactory.createEmptyBorder(16, 17, 16, 17)));
         card.putClientProperty("FlatLaf.style", "arc: 15");
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
-        card.setPreferredSize(new Dimension(720, 120));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 190));
+        card.setPreferredSize(new Dimension(720, 170));
 
         JPanel details = new JPanel();
         details.setOpaque(false);
@@ -93,16 +104,29 @@ public class EventCatalogPanel extends JPanel {
         ViewStyles.styleSecondaryText(venue, 14f);
         venue.setAlignmentX(LEFT_ALIGNMENT);
 
+        JLabel category = new JLabel(event.getCategory() + "  |  " + event.getStatus().replace('_', ' '));
+        ViewStyles.styleSecondaryText(category, 12f);
+        category.setAlignmentX(LEFT_ALIGNMENT);
         details.add(title);
+        details.add(category);
         details.add(date);
         details.add(venue);
-        card.add(details, BorderLayout.WEST);
+        event.getCustomDetails().entrySet().stream().limit(2).forEach(detail -> {
+            String name = detail.getKey();
+            String value = detail.getValue();
+            JLabel custom = new JLabel(name + ": " + value);
+            ViewStyles.styleSecondaryText(custom, 12f);
+            custom.setAlignmentX(LEFT_ALIGNMENT);
+            details.add(custom);
+        });
 
         JPanel purchase = new JPanel();
         purchase.setOpaque(false);
         purchase.setLayout(new BoxLayout(purchase, BoxLayout.Y_AXIS));
 
-        JLabel price = new JLabel(String.format("KSh %,.0f", event.getTicketPrice()));
+        double lowestPrice = event.getTicketTiers().stream().mapToDouble(TicketTier::getPrice)
+            .min().orElse(0.0);
+        JLabel price = new JLabel(String.format("From KES %,.0f", lowestPrice));
         price.setForeground(ViewStyles.FOREGROUND);
         price.setFont(price.getFont().deriveFont(Font.BOLD, 16f));
         price.setAlignmentX(RIGHT_ALIGNMENT);
@@ -113,7 +137,14 @@ public class EventCatalogPanel extends JPanel {
         seats.setBorder(new EmptyBorder(4, 0, 10, 0));
 
         JButton bookButton = new JButton("Book Now");
-        ViewStyles.stylePrimaryButton(bookButton);
+        boolean salesOpen = event.canPurchaseOn(java.time.LocalDate.now()) && event.getAvailableSeats() > 0;
+        if (salesOpen) {
+            ViewStyles.stylePrimaryButton(bookButton);
+        } else {
+            ViewStyles.styleSecondaryButton(bookButton);
+            bookButton.setText("Sales Closed");
+            bookButton.setEnabled(false);
+        }
         bookButton.setAlignmentX(RIGHT_ALIGNMENT);
         bookButton.addActionListener(action -> checkoutAction.accept(event.getEventId()));
 
@@ -124,6 +155,17 @@ public class EventCatalogPanel extends JPanel {
         east.setOpaque(false);
         east.add(purchase);
         card.add(east, BorderLayout.EAST);
+
+        JPanel center = new JPanel(new BorderLayout(12, 0));
+        center.setOpaque(false);
+        if (!event.getBannerImagePath().isBlank() && new java.io.File(event.getBannerImagePath()).isFile()) {
+            ImageIcon source = new ImageIcon(event.getBannerImagePath());
+            JLabel image = new JLabel(new ImageIcon(source.getImage().getScaledInstance(150, 104,
+                java.awt.Image.SCALE_SMOOTH)));
+            center.add(image, BorderLayout.WEST);
+        }
+        center.add(details, BorderLayout.CENTER);
+        card.add(center, BorderLayout.CENTER);
 
         return card;
     }
