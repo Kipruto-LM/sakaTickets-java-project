@@ -82,6 +82,10 @@ final class EventVisuals {
     private static BufferedImage loadEventImage(Event event) {
         String customPath = event.getBannerImagePath();
         if (customPath != null && !customPath.isBlank()) {
+            if (customPath.startsWith("/images/")) {
+                BufferedImage bundled = loadResource(customPath);
+                if (bundled != null) return bundled;
+            }
             try {
                 BufferedImage custom = ImageIO.read(new File(customPath));
                 if (custom != null) return custom;

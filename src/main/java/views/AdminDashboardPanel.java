@@ -16,8 +16,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.LinkedHashMap;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -44,6 +46,7 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
+import com.toedter.calendar.JDateChooser;
 import models.Event;
 import models.TicketTier;
 
@@ -70,10 +73,11 @@ public class AdminDashboardPanel extends JPanel {
     private final JButton createEventButton = new JButton("+  Create New Event");
     private String activePage = "Manage Events";
     private final JTextField titleField = new JTextField(28);
-    private final JTextField dateField = new JTextField(28);
+    private final JDateChooser dateChooser = createDateChooser();
     private final JTextField venueField = new JTextField(28);
-    private final JTextField salesStartField = new JTextField(28);
-    private final JTextField salesEndField = new JTextField(28);
+    private final JDateChooser salesStartChooser = createDateChooser();
+    private final JDateChooser salesEndChooser = createDateChooser();
+    private final JLabel validationLabel = new JLabel(" ");
     private final JTextField categoryField = new JTextField(28);
     private final JTextField bannerPathField = new JTextField(22);
     private final JTextField customNameField = new JTextField(12);
@@ -96,6 +100,14 @@ public class AdminDashboardPanel extends JPanel {
         private final JCheckBox archivedToggle = new JCheckBox("Show archived");
         private Color selectedAccent = ViewStyles.ACCENT;
     private Event editingEvent;
+
+    private static JDateChooser createDateChooser() {
+        JDateChooser chooser = new JDateChooser();
+        chooser.setDateFormatString("yyyy-MM-dd");
+        chooser.setPreferredSize(new Dimension(260, 36));
+        chooser.setDate(null);
+        return chooser;
+    }
 
     public AdminDashboardPanel(EventManager eventManager, OrderManager orderManager, Runnable logoutAction,
             String hostId, String hostName) {
@@ -672,26 +684,37 @@ public class AdminDashboardPanel extends JPanel {
         JPanel form = new JPanel(new GridBagLayout());
         form.setBackground(ViewStyles.BACKGROUND);
         form.setBorder(new EmptyBorder(14, 8, 18, 8));
-        addFormField(form, "Event title", titleField, 0);
-        addFormField(form, "Date (YYYY-MM-DD)", dateField, 1);
-        addFormField(form, "Venue", venueField, 2);
-        addFormField(form, "Sales start (optional)", salesStartField, 3);
-        addFormField(form, "Sales end (optional)", salesEndField, 4);
-        addFormField(form, "Sales status", statusBox, 5);
-        addFormField(form, "Category", categoryField, 6);
-        addFormField(form, "Banner image", buildBannerField(), 7);
-        addFormField(form, "Card accent", accentColorButton, 8);
+        validationLabel.setForeground(new Color(0xFF, 0x4D, 0x6A));
+        validationLabel.setFont(ViewStyles.BODY_FONT.deriveFont(java.awt.Font.BOLD, 12f));
+        validationLabel.setVisible(false);
+        GridBagConstraints validationConstraints = new GridBagConstraints();
+        validationConstraints.gridx = 0;
+        validationConstraints.gridy = 0;
+        validationConstraints.gridwidth = 2;
+        validationConstraints.anchor = GridBagConstraints.WEST;
+        validationConstraints.fill = GridBagConstraints.HORIZONTAL;
+        validationConstraints.insets = new Insets(0, 0, 14, 0);
+        form.add(validationLabel, validationConstraints);
+        addFormField(form, "Event title *", titleField, 1);
+        addFormField(form, "Event date *", dateChooser, 2);
+        addFormField(form, "Venue *", venueField, 3);
+        addFormField(form, "Sales start (optional)", salesStartChooser, 4);
+        addFormField(form, "Sales end (optional)", salesEndChooser, 5);
+        addFormField(form, "Sales status", statusBox, 6);
+        addFormField(form, "Category", categoryField, 7);
+        addFormField(form, "Banner image", buildBannerField(), 8);
+        addFormField(form, "Card accent", accentColorButton, 9);
 
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 0;
-        constraints.gridy = 9;
+        constraints.gridy = 10;
         constraints.gridwidth = 2;
         constraints.weightx = 1;
         constraints.fill = GridBagConstraints.HORIZONTAL;
         constraints.insets = new Insets(10, 0, 5, 0);
         form.add(buildCustomFields(), constraints);
 
-        constraints.gridy = 10;
+        constraints.gridy = 11;
         form.add(buildTierManager(), constraints);
 
         JButton save = new JButton("Save Event");
@@ -704,7 +727,7 @@ public class AdminDashboardPanel extends JPanel {
         actions.setOpaque(false);
         actions.add(fresh);
         actions.add(save);
-        constraints.gridy = 11;
+        constraints.gridy = 12;
         constraints.insets = new Insets(16, 0, 0, 0);
         form.add(actions, constraints);
 
@@ -865,10 +888,10 @@ public class AdminDashboardPanel extends JPanel {
 
     private void styleInputs() {
         ViewStyles.styleInput(titleField);
-        ViewStyles.styleInput(dateField);
+        styleDateChooser(dateChooser);
         ViewStyles.styleInput(venueField);
-        ViewStyles.styleInput(salesStartField);
-        ViewStyles.styleInput(salesEndField);
+        styleDateChooser(salesStartChooser);
+        styleDateChooser(salesEndChooser);
         ViewStyles.styleInput(categoryField);
         ViewStyles.styleInput(bannerPathField);
         ViewStyles.styleInput(tierNameField);
@@ -879,6 +902,14 @@ public class AdminDashboardPanel extends JPanel {
         accentColorButton.setBackground(selectedAccent);
         accentColorButton.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
         accentColorButton.addActionListener(action -> chooseAccentColor());
+    }
+
+    private void styleDateChooser(JDateChooser chooser) {
+        if (chooser.getDateEditor().getUiComponent() instanceof JTextField editor) {
+            ViewStyles.styleInput(editor);
+        }
+        chooser.setBorder(BorderFactory.createLineBorder(ViewStyles.OUTLINE));
+        chooser.setPreferredSize(new Dimension(260, 36));
     }
 
     private void addFormField(JPanel form, String label, java.awt.Component input, int row) {
@@ -995,31 +1026,27 @@ public class AdminDashboardPanel extends JPanel {
     }
 
     private void saveEvent() {
+        clearValidation();
         String title = titleField.getText().trim();
-        String date = dateField.getText().trim();
         String venue = venueField.getText().trim();
-        if (title.isEmpty() || date.isEmpty() || venue.isEmpty()) {
-            showError("Complete the title, date, and venue fields.");
+        LocalDate eventDate = toLocalDate(dateChooser.getDate());
+        if (title.isEmpty() || eventDate == null || venue.isEmpty()) {
+            List<java.awt.Component> missingFields = new ArrayList<>();
+            if (title.isEmpty()) missingFields.add(titleField);
+            if (eventDate == null) missingFields.add(dateChooser);
+            if (venue.isEmpty()) missingFields.add(venueField);
+            showValidationError("Required: add an event title, event date, and venue.",
+                    missingFields.toArray(java.awt.Component[]::new));
             return;
         }
-        try {
-            LocalDate.parse(date);
-        } catch (DateTimeParseException exception) {
-            showError("Enter the date in YYYY-MM-DD format.");
-            return;
-        }
-        LocalDate salesStart = parseOptionalDate(salesStartField.getText(), "sales start");
-        LocalDate salesEnd = parseOptionalDate(salesEndField.getText(), "sales end");
-        if ((!salesStartField.getText().isBlank() && salesStart == null)
-                || (!salesEndField.getText().isBlank() && salesEnd == null)) {
-            return;
-        }
+        LocalDate salesStart = toLocalDate(salesStartChooser.getDate());
+        LocalDate salesEnd = toLocalDate(salesEndChooser.getDate());
         if (salesStart != null && salesEnd != null && salesEnd.isBefore(salesStart)) {
-            showError("Sales end date cannot be before sales start date.");
+            showValidationError("Sales end cannot be before sales start.", salesStartChooser, salesEndChooser);
             return;
         }
         if (tierModel.isEmpty()) {
-            showError("Add at least one ticket tier before saving.");
+            showValidationError("Add at least one ticket tier before saving.", tierList);
             return;
         }
 
@@ -1033,12 +1060,12 @@ public class AdminDashboardPanel extends JPanel {
         Event savedEvent;
         if (editingEvent == null) {
             savedEvent = new Event("EVT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
-                    title, date, venue, tiers, status, hostId);
+                    title, eventDate.toString(), venue, tiers, status, hostId);
         } else {
             savedEvent = editingEvent;
         }
         savedEvent.setTitle(title);
-        savedEvent.setDate(date);
+        savedEvent.setDate(eventDate.toString());
         savedEvent.setVenue(venue);
         savedEvent.setTicketTiers(tiers);
         savedEvent.setStatus(status);
@@ -1059,6 +1086,7 @@ public class AdminDashboardPanel extends JPanel {
             eventManager.updateEvent(savedEvent);
         }
         refreshEvents();
+        clearValidation();
         startNewEvent();
         showPage("Manage Events");
         JOptionPane.showMessageDialog(this, "Event saved successfully.", "Event Saved",
@@ -1068,7 +1096,7 @@ public class AdminDashboardPanel extends JPanel {
     private void loadEvent(Event event) {
         editingEvent = event;
         titleField.setText(event.getTitle());
-        dateField.setText(event.getDate());
+        dateChooser.setDate(toDate(LocalDate.parse(event.getDate())));
         venueField.setText(event.getVenue());
         categoryField.setText(event.getCategory());
         bannerPathField.setText(event.getBannerImagePath());
@@ -1080,8 +1108,8 @@ public class AdminDashboardPanel extends JPanel {
         accentColorButton.setBackground(selectedAccent);
         customFieldModel.clear();
         event.getCustomDetails().forEach((name, value) -> customFieldModel.addElement(new CustomField(name, value)));
-        salesStartField.setText(event.getSalesStartDate() == null ? "" : event.getSalesStartDate().toString());
-        salesEndField.setText(event.getSalesEndDate() == null ? "" : event.getSalesEndDate().toString());
+        salesStartChooser.setDate(toDate(event.getSalesStartDate()));
+        salesEndChooser.setDate(toDate(event.getSalesEndDate()));
         statusBox.setSelectedItem(event.getStatus());
         tierModel.clear();
         for (TicketTier tier : event.getTicketTiers()) {
@@ -1095,36 +1123,59 @@ public class AdminDashboardPanel extends JPanel {
     private void startNewEvent() {
         editingEvent = null;
         titleField.setText("");
-        dateField.setText("");
+        dateChooser.setDate(null);
         venueField.setText("");
         categoryField.setText("General");
         bannerPathField.setText("");
         selectedAccent = ViewStyles.ACCENT;
         accentColorButton.setBackground(selectedAccent);
         customFieldModel.clear();
-        salesStartField.setText("");
-        salesEndField.setText("");
+        salesStartChooser.setDate(null);
+        salesEndChooser.setDate(null);
         statusBox.setSelectedItem("ON_SALE");
         tierModel.clear();
         tierList.clearSelection();
         clearTierEditor();
+        clearValidation();
         showPage("Editor");
     }
 
     private void showError(String message) {
-        JOptionPane.showMessageDialog(this, message, "Check Event Details", JOptionPane.WARNING_MESSAGE);
+        showValidationError(message);
     }
 
-    private LocalDate parseOptionalDate(String value, String label) {
-        if (value.isBlank()) {
-            return null;
+    private void showValidationError(String message, java.awt.Component... invalidFields) {
+        validationLabel.setText(message);
+        validationLabel.setVisible(true);
+        for (java.awt.Component field : invalidFields) {
+            if (field instanceof javax.swing.JComponent component) {
+                component.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(new Color(0xFF, 0x4D, 0x6A), 2),
+                        BorderFactory.createEmptyBorder(2, 2, 2, 2)));
+            }
         }
-        try {
-            return LocalDate.parse(value.trim());
-        } catch (DateTimeParseException exception) {
-            showError("Enter " + label + " in YYYY-MM-DD format, or leave it blank.");
-            return null;
-        }
+        validationLabel.revalidate();
+        validationLabel.repaint();
+    }
+
+    private void clearValidation() {
+        validationLabel.setText(" ");
+        validationLabel.setVisible(false);
+        ViewStyles.styleInput(titleField);
+        ViewStyles.styleInput(venueField);
+        ViewStyles.styleInput(tierNameField);
+        styleDateChooser(dateChooser);
+        styleDateChooser(salesStartChooser);
+        styleDateChooser(salesEndChooser);
+        tierList.setBorder(null);
+    }
+
+    private LocalDate toLocalDate(Date date) {
+        return date == null ? null : date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
+    private Date toDate(LocalDate date) {
+        return date == null ? null : Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
     }
 
     private record CustomField(String name, String value) {

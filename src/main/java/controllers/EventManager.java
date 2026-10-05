@@ -26,7 +26,19 @@ public class EventManager {
             "Sarit Expo Centre", 250, 1000.00));
         events.add(new Event("EVT-007", "Rift Valley Trail Run", "2026-11-22",
             "Hell's Gate National Park", 180, 750.00));
+        assignArtwork(events.get(0), "Tech", "/images/event-tech.jpg");
+        assignArtwork(events.get(1), "Nightlife", "/images/event-nightlife.jpg");
+        assignArtwork(events.get(2), "Music", "/images/event-music.jpg");
+        assignArtwork(events.get(3), "Food", "/images/event-food.jpg");
+        assignArtwork(events.get(4), "Jazz", "/images/event-jazz.jpg");
+        assignArtwork(events.get(5), "Arts & Culture", "/images/event-expo.jpg");
+        assignArtwork(events.get(6), "Outdoors", "/images/event-trail.jpg");
         events.forEach(event -> event.setHostId("admin-001"));
+    }
+
+    private void assignArtwork(Event event, String category, String imagePath) {
+        event.setCategory(category);
+        event.setBannerImagePath(imagePath);
     }
 
     public List<Event> getEvents() {
