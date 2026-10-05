@@ -523,12 +523,12 @@ public class AdminDashboardPanel extends JPanel {
         editor.setBackground(ViewStyles.SURFACE);
         editor.setBorder(new EmptyBorder(12, 12, 12, 12));
         addTierField(editor, "Tier name", tierNameField, 0, 0);
-        addTierField(editor, "Price (KES)", priceSpinner, 0, 1);
-        addTierField(editor, "Capacity", capacitySpinner, 0, 2);
+        addTierField(editor, "Price (KES)", priceSpinner, 1, 0);
+        addTierField(editor, "Capacity", capacitySpinner, 2, 0);
         GridBagConstraints button = new GridBagConstraints();
-        button.gridx = 3;
+        button.gridx = 2;
         button.gridy = 0;
-        button.gridheight = 2;
+        button.gridheight = 3;
         button.insets = new Insets(0, 8, 0, 0);
         editor.add(tierActionButton, button);
         ViewStyles.stylePrimaryButton(tierActionButton);
