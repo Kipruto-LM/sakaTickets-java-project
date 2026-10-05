@@ -9,15 +9,22 @@ import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.LinkedHashMap;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import java.time.LocalDate;
 import javax.swing.BorderFactory;
+import javax.swing.JCheckBox;
+import javax.swing.JColorChooser;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -25,11 +32,15 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
+import javax.swing.JTable;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.ImageIcon;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableModel;
 import models.Event;
 import models.TicketTier;
 
@@ -48,13 +59,27 @@ public class AdminDashboardPanel extends JPanel {
     private final JTextField venueField = new JTextField(28);
     private final JTextField salesStartField = new JTextField(28);
     private final JTextField salesEndField = new JTextField(28);
+    private final JTextField categoryField = new JTextField(28);
+    private final JTextField bannerPathField = new JTextField(22);
+    private final JTextField customNameField = new JTextField(12);
+    private final JTextField customValueField = new JTextField(18);
     private final JTextField tierNameField = new JTextField(12);
     private final JSpinner priceSpinner = new JSpinner(new SpinnerNumberModel(1000.0, 1.0, 100000000.0, 100.0));
     private final JSpinner capacitySpinner = new JSpinner(new SpinnerNumberModel(50, 1, 100000, 1));
     private final JComboBox<String> statusBox = new JComboBox<>(EVENT_STATUSES);
     private final DefaultListModel<TicketTier> tierModel = new DefaultListModel<>();
     private final JList<TicketTier> tierList = new JList<>(tierModel);
+        private final DefaultListModel<CustomField> customFieldModel = new DefaultListModel<>();
+        private final JList<CustomField> customFieldList = new JList<>(customFieldModel);
     private final JButton tierActionButton = new JButton("Add Tier");
+        private final JButton accentColorButton = new JButton("Choose accent color");
+        private final JTextField searchField = new JTextField(18);
+        private final JTextField dateFromFilter = new JTextField(10);
+        private final JTextField dateToFilter = new JTextField(10);
+        private final JComboBox<String> statusFilter = new JComboBox<>(
+            new String[] {"All statuses", "ON_SALE", "PAUSED", "SOLD_OUT", "CANCELLED"});
+        private final JCheckBox archivedToggle = new JCheckBox("Show archived");
+        private Color selectedAccent = ViewStyles.ACCENT;
     private Event editingEvent;
 
     public AdminDashboardPanel(EventManager eventManager, OrderManager orderManager, Runnable logoutAction,
@@ -69,13 +94,28 @@ public class AdminDashboardPanel extends JPanel {
 
     public void refreshEvents() {
         eventList.removeAll();
-        List<Event> events = eventManager.getEventsByHostId(hostId);
+        List<Event> allEvents = eventManager.getEventsByHostId(hostId);
+        String query = searchField.getText().trim().toLowerCase(java.util.Locale.ROOT);
+        String selectedStatus = (String) statusFilter.getSelectedItem();
+        List<Event> events = allEvents.stream()
+            .filter(event -> archivedToggle.isSelected() || !event.isArchived())
+            .filter(event -> "All statuses".equals(selectedStatus) || event.getStatus().equals(selectedStatus))
+            .filter(event -> query.isEmpty() || (event.getTitle() + " " + event.getVenue() + " "
+                + event.getCategory() + " " + event.getDate()).toLowerCase(java.util.Locale.ROOT).contains(query))
+            .filter(this::matchesDateRange)
+            .toList();
         for (Event event : events) {
             eventList.add(createEventCard(event));
             eventList.add(javax.swing.Box.createVerticalStrut(12));
         }
+        if (events.isEmpty() && !allEvents.isEmpty()) {
+            JLabel noMatches = new JLabel("No events match these filters.", JLabel.CENTER);
+            ViewStyles.styleSecondaryText(noMatches, 15f);
+            noMatches.setAlignmentX(CENTER_ALIGNMENT);
+            eventList.add(noMatches);
+        }
         java.awt.CardLayout layout = (java.awt.CardLayout) eventState.getLayout();
-        layout.show(eventState, events.isEmpty() ? "empty" : "events");
+        layout.show(eventState, allEvents.isEmpty() ? "empty" : "events");
         eventList.revalidate();
         eventList.repaint();
     }
@@ -139,15 +179,56 @@ public class AdminDashboardPanel extends JPanel {
         message.add(create);
         empty.add(message);
         eventState.add(empty, "empty");
-        return eventState;
+
+        ViewStyles.styleInput(searchField);
+        ViewStyles.styleInput(dateFromFilter);
+        ViewStyles.styleInput(dateToFilter);
+        archivedToggle.setOpaque(false);
+        archivedToggle.setForeground(ViewStyles.FOREGROUND);
+        JButton applyFilters = new JButton("Filter");
+        ViewStyles.styleSecondaryButton(applyFilters);
+        applyFilters.addActionListener(action -> refreshEvents());
+        searchField.addActionListener(action -> refreshEvents());
+        statusFilter.addActionListener(action -> refreshEvents());
+        archivedToggle.addActionListener(action -> refreshEvents());
+        JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+        filters.setOpaque(false);
+        filters.add(new JLabel("Search"));
+        filters.add(searchField);
+        filters.add(statusFilter);
+        filters.add(new JLabel("From"));
+        filters.add(dateFromFilter);
+        filters.add(new JLabel("To"));
+        filters.add(dateToFilter);
+        filters.add(archivedToggle);
+        filters.add(applyFilters);
+
+        JPanel overview = new JPanel(new BorderLayout(0, 10));
+        overview.setBackground(ViewStyles.BACKGROUND);
+        overview.add(filters, BorderLayout.NORTH);
+        overview.add(eventState, BorderLayout.CENTER);
+        return overview;
+    }
+
+    private boolean matchesDateRange(Event event) {
+        try {
+            LocalDate eventDate = LocalDate.parse(event.getDate());
+            String from = dateFromFilter.getText().trim();
+            String to = dateToFilter.getText().trim();
+            return (from.isEmpty() || !eventDate.isBefore(LocalDate.parse(from)))
+                    && (to.isEmpty() || !eventDate.isAfter(LocalDate.parse(to)));
+        } catch (DateTimeParseException exception) {
+            return false;
+        }
     }
 
     private JPanel createEventCard(Event event) {
         JPanel card = new JPanel(new BorderLayout(12, 8));
         card.setBackground(ViewStyles.SURFACE);
         card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(ViewStyles.OUTLINE), new EmptyBorder(14, 16, 14, 16)));
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 132));
+            BorderFactory.createMatteBorder(1, 5, 1, 1, eventAccent(event)),
+            new EmptyBorder(12, 14, 12, 14)));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 176));
 
         JPanel titleRow = new JPanel(new BorderLayout());
         titleRow.setOpaque(false);
@@ -164,20 +245,124 @@ public class AdminDashboardPanel extends JPanel {
 
         int capacity = event.getTicketTiers().stream().mapToInt(TicketTier::getInitialCapacity).sum();
         JLabel metrics = new JLabel(String.format(
-                "%s  |  %s  |  Tickets sold: %d / %d  |  Revenue: KES %,.2f",
-                event.getDate(), event.getVenue(), orderManager.calculateTotalTicketsSold(event.getEventId()),
-                capacity, orderManager.calculateEventRevenue(event.getEventId())));
+                "%s  |  %s  |  %s  |  Tickets sold: %d / %d  |  Revenue: KES %,.2f",
+                event.getCategory(), event.getDate(), event.getVenue(),
+                orderManager.calculateTotalTicketsSold(event.getEventId()), capacity,
+                orderManager.calculateEventRevenue(event.getEventId())));
         ViewStyles.styleSecondaryText(metrics, 13f);
         card.add(metrics, BorderLayout.CENTER);
 
-        JButton manage = new JButton("Edit / Manage");
-        ViewStyles.styleSecondaryButton(manage);
+        JButton manage = smallButton("Edit");
         manage.addActionListener(action -> loadEvent(event));
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        JButton attendees = smallButton("Attendees");
+        attendees.addActionListener(action -> showAttendees(event));
+        JButton export = smallButton("Export CSV");
+        export.addActionListener(action -> exportAttendees(event));
+        JButton duplicate = smallButton("Duplicate");
+        duplicate.addActionListener(action -> duplicateEvent(event));
+        JButton archive = smallButton(event.isArchived() ? "Restore" : "Archive");
+        archive.addActionListener(action -> toggleArchive(event));
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         actions.setOpaque(false);
         actions.add(manage);
+        actions.add(attendees);
+        actions.add(export);
+        actions.add(duplicate);
+        actions.add(archive);
         card.add(actions, BorderLayout.SOUTH);
+
+        if (!event.getBannerImagePath().isBlank()) {
+            java.io.File imageFile = new java.io.File(event.getBannerImagePath());
+            if (imageFile.isFile()) {
+                ImageIcon source = new ImageIcon(event.getBannerImagePath());
+                ImageIcon scaled = new ImageIcon(source.getImage().getScaledInstance(112, 78,
+                        java.awt.Image.SCALE_SMOOTH));
+                JLabel banner = new JLabel(scaled);
+                banner.setBorder(new EmptyBorder(0, 0, 0, 12));
+                card.add(banner, BorderLayout.WEST);
+            }
+        }
         return card;
+    }
+
+    private JButton smallButton(String text) {
+        JButton button = new JButton(text);
+        ViewStyles.styleSecondaryButton(button);
+        button.setFont(button.getFont().deriveFont(12f));
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(ViewStyles.OUTLINE), new EmptyBorder(5, 8, 5, 8)));
+        return button;
+    }
+
+    private Color eventAccent(Event event) {
+        try {
+            return Color.decode(event.getAccentColorHex());
+        } catch (RuntimeException exception) {
+            return ViewStyles.ACCENT;
+        }
+    }
+
+    private void showAttendees(Event event) {
+        DefaultTableModel model = new DefaultTableModel(
+                new Object[] {"Receipt", "Guest", "Email", "Tier", "Qty", "Total (KES)"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return false; }
+        };
+        orderManager.getBookingsByEvent(event.getEventId()).forEach(booking -> model.addRow(new Object[] {
+            booking.getBookingId(), booking.getCustomerName(), booking.getCustomerEmail(),
+            booking.getTierName(), booking.getQuantity(), booking.getTotalPrice()
+        }));
+        JTable table = new JTable(model);
+        table.setFillsViewportHeight(true);
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setPreferredSize(new Dimension(780, 330));
+        JOptionPane.showMessageDialog(this, scroll, event.getTitle() + " attendees",
+                JOptionPane.PLAIN_MESSAGE);
+    }
+
+    private void exportAttendees(Event event) {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setSelectedFile(new java.io.File(event.getTitle().replaceAll("[^A-Za-z0-9_-]", "_") + "-attendees.csv"));
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        try (var writer = Files.newBufferedWriter(chooser.getSelectedFile().toPath(), StandardCharsets.UTF_8)) {
+            writer.write("Receipt,Guest,Email,Tier,Quantity,Total KES");
+            writer.newLine();
+            for (var booking : orderManager.getBookingsByEvent(event.getEventId())) {
+                writer.write(String.join(",", csv(booking.getBookingId()), csv(booking.getCustomerName()),
+                        csv(booking.getCustomerEmail()), csv(booking.getTierName()),
+                        csv(Integer.toString(booking.getQuantity())), csv(Double.toString(booking.getTotalPrice()))));
+                writer.newLine();
+            }
+            JOptionPane.showMessageDialog(this, "Attendee CSV exported.", "Export complete",
+                    JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException exception) {
+            showError("Could not export the CSV: " + exception.getMessage());
+        }
+    }
+
+    private String csv(String value) {
+        String escaped = value == null ? "" : value.replace("\"", "\"\"");
+        return "\"" + escaped + "\"";
+    }
+
+    private void duplicateEvent(Event event) {
+        Event copy = eventManager.duplicateEvent(event.getEventId(), hostId);
+        refreshEvents();
+        loadEvent(copy);
+    }
+
+    private void toggleArchive(Event event) {
+        boolean archive = !event.isArchived();
+        int answer = JOptionPane.showConfirmDialog(this,
+                archive ? "Archive this event? It will no longer appear in the public catalog."
+                        : "Restore this event to your dashboard and the public catalog?",
+                "Confirm event change", JOptionPane.YES_NO_OPTION);
+        if (answer == JOptionPane.YES_OPTION) {
+            eventManager.setArchived(event.getEventId(), archive);
+            refreshEvents();
+        }
     }
 
     private Color statusColor(String status) {
@@ -200,14 +385,20 @@ public class AdminDashboardPanel extends JPanel {
         addFormField(form, "Sales start (optional)", salesStartField, 3);
         addFormField(form, "Sales end (optional)", salesEndField, 4);
         addFormField(form, "Sales status", statusBox, 5);
+        addFormField(form, "Category", categoryField, 6);
+        addFormField(form, "Banner image", buildBannerField(), 7);
+        addFormField(form, "Card accent", accentColorButton, 8);
 
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 0;
-        constraints.gridy = 6;
+        constraints.gridy = 9;
         constraints.gridwidth = 2;
         constraints.weightx = 1;
         constraints.fill = GridBagConstraints.HORIZONTAL;
         constraints.insets = new Insets(10, 0, 5, 0);
+        form.add(buildCustomFields(), constraints);
+
+        constraints.gridy = 10;
         form.add(buildTierManager(), constraints);
 
         JButton save = new JButton("Save Event");
@@ -220,7 +411,7 @@ public class AdminDashboardPanel extends JPanel {
         actions.setOpaque(false);
         actions.add(fresh);
         actions.add(save);
-        constraints.gridy = 7;
+        constraints.gridy = 11;
         constraints.insets = new Insets(16, 0, 0, 0);
         form.add(actions, constraints);
 
@@ -232,6 +423,93 @@ public class AdminDashboardPanel extends JPanel {
         wrapper.setBackground(ViewStyles.BACKGROUND);
         wrapper.add(scroll);
         return wrapper;
+    }
+
+    private JPanel buildBannerField() {
+        JPanel field = new JPanel(new BorderLayout(8, 0));
+        field.setOpaque(false);
+        JButton browse = new JButton("Browse...");
+        ViewStyles.styleSecondaryButton(browse);
+        browse.addActionListener(action -> chooseBanner());
+        field.add(bannerPathField, BorderLayout.CENTER);
+        field.add(browse, BorderLayout.EAST);
+        return field;
+    }
+
+    private JPanel buildCustomFields() {
+        JPanel section = new JPanel(new BorderLayout(8, 8));
+        section.setOpaque(false);
+        JLabel heading = new JLabel("Custom event details");
+        ViewStyles.styleHeading(heading, 16f);
+        section.add(heading, BorderLayout.NORTH);
+
+        JPanel editor = new JPanel(new BorderLayout(8, 0));
+        editor.setOpaque(false);
+        JPanel inputs = new JPanel(new java.awt.GridLayout(1, 2, 8, 0));
+        inputs.setOpaque(false);
+        ViewStyles.styleInput(customNameField);
+        ViewStyles.styleInput(customValueField);
+        inputs.add(customNameField);
+        inputs.add(customValueField);
+        JButton add = new JButton("Add detail");
+        ViewStyles.styleSecondaryButton(add);
+        add.addActionListener(action -> addCustomField());
+        editor.add(inputs, BorderLayout.CENTER);
+        editor.add(add, BorderLayout.EAST);
+
+        customFieldList.setBackground(ViewStyles.SURFACE);
+        customFieldList.setForeground(ViewStyles.FOREGROUND);
+        JScrollPane detailsScroll = new JScrollPane(customFieldList);
+        detailsScroll.setPreferredSize(new Dimension(600, 78));
+        JButton remove = new JButton("Remove selected detail");
+        ViewStyles.styleSecondaryButton(remove);
+        remove.addActionListener(action -> {
+            int selected = customFieldList.getSelectedIndex();
+            if (selected >= 0) customFieldModel.remove(selected);
+        });
+        JPanel body = new JPanel(new BorderLayout(0, 8));
+        body.setOpaque(false);
+        body.add(editor, BorderLayout.NORTH);
+        body.add(detailsScroll, BorderLayout.CENTER);
+        body.add(remove, BorderLayout.SOUTH);
+        section.add(body, BorderLayout.CENTER);
+        return section;
+    }
+
+    private void addCustomField() {
+        String name = customNameField.getText().trim();
+        String value = customValueField.getText().trim();
+        if (name.isEmpty() || value.isEmpty()) {
+            showError("Enter both a custom detail name and value.");
+            return;
+        }
+        for (int index = 0; index < customFieldModel.size(); index++) {
+            if (customFieldModel.get(index).name().equalsIgnoreCase(name)) {
+                customFieldModel.set(index, new CustomField(name, value));
+                customNameField.setText("");
+                customValueField.setText("");
+                return;
+            }
+        }
+        customFieldModel.addElement(new CustomField(name, value));
+        customNameField.setText("");
+        customValueField.setText("");
+    }
+
+    private void chooseBanner() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileFilter(new FileNameExtensionFilter("Image files", "png", "jpg", "jpeg", "gif", "webp"));
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            bannerPathField.setText(chooser.getSelectedFile().getAbsolutePath());
+        }
+    }
+
+    private void chooseAccentColor() {
+        Color chosen = JColorChooser.showDialog(this, "Choose event accent", selectedAccent);
+        if (chosen != null) {
+            selectedAccent = chosen;
+            accentColorButton.setBackground(chosen);
+        }
     }
 
     private JPanel buildTierManager() {
@@ -298,9 +576,16 @@ public class AdminDashboardPanel extends JPanel {
         ViewStyles.styleInput(venueField);
         ViewStyles.styleInput(salesStartField);
         ViewStyles.styleInput(salesEndField);
+        ViewStyles.styleInput(categoryField);
+        ViewStyles.styleInput(bannerPathField);
         ViewStyles.styleInput(tierNameField);
         styleSpinner(priceSpinner);
         styleSpinner(capacitySpinner);
+        accentColorButton.setOpaque(true);
+        accentColorButton.setForeground(Color.WHITE);
+        accentColorButton.setBackground(selectedAccent);
+        accentColorButton.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+        accentColorButton.addActionListener(action -> chooseAccentColor());
     }
 
     private void addFormField(JPanel form, String label, java.awt.Component input, int row) {
@@ -452,21 +737,33 @@ public class AdminDashboardPanel extends JPanel {
                     tier.getAvailableSeats()));
         }
         String status = (String) statusBox.getSelectedItem();
+        Event savedEvent;
         if (editingEvent == null) {
-            Event created = new Event("EVT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
+            savedEvent = new Event("EVT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
                     title, date, venue, tiers, status, hostId);
-                created.setSalesStartDate(salesStart);
-                created.setSalesEndDate(salesEnd);
-            eventManager.addEvent(created);
         } else {
-            editingEvent.setTitle(title);
-            editingEvent.setDate(date);
-            editingEvent.setVenue(venue);
-            editingEvent.setTicketTiers(tiers);
-            editingEvent.setStatus(status);
-            editingEvent.setSalesStartDate(salesStart);
-            editingEvent.setSalesEndDate(salesEnd);
-            eventManager.updateEvent(editingEvent);
+            savedEvent = editingEvent;
+        }
+        savedEvent.setTitle(title);
+        savedEvent.setDate(date);
+        savedEvent.setVenue(venue);
+        savedEvent.setTicketTiers(tiers);
+        savedEvent.setStatus(status);
+        savedEvent.setSalesStartDate(salesStart);
+        savedEvent.setSalesEndDate(salesEnd);
+        savedEvent.setCategory(categoryField.getText().trim());
+        savedEvent.setBannerImagePath(bannerPathField.getText().trim());
+        savedEvent.setAccentColorHex(String.format("#%06X", selectedAccent.getRGB() & 0xFFFFFF));
+        Map<String, String> customDetails = new LinkedHashMap<>();
+        for (int index = 0; index < customFieldModel.size(); index++) {
+            CustomField customField = customFieldModel.get(index);
+            customDetails.put(customField.name(), customField.value());
+        }
+        savedEvent.setCustomDetails(customDetails);
+        if (editingEvent == null) {
+            eventManager.addEvent(savedEvent);
+        } else {
+            eventManager.updateEvent(savedEvent);
         }
         refreshEvents();
         startNewEvent();
@@ -480,6 +777,16 @@ public class AdminDashboardPanel extends JPanel {
         titleField.setText(event.getTitle());
         dateField.setText(event.getDate());
         venueField.setText(event.getVenue());
+        categoryField.setText(event.getCategory());
+        bannerPathField.setText(event.getBannerImagePath());
+        try {
+            selectedAccent = Color.decode(event.getAccentColorHex());
+        } catch (RuntimeException exception) {
+            selectedAccent = ViewStyles.ACCENT;
+        }
+        accentColorButton.setBackground(selectedAccent);
+        customFieldModel.clear();
+        event.getCustomDetails().forEach((name, value) -> customFieldModel.addElement(new CustomField(name, value)));
         salesStartField.setText(event.getSalesStartDate() == null ? "" : event.getSalesStartDate().toString());
         salesEndField.setText(event.getSalesEndDate() == null ? "" : event.getSalesEndDate().toString());
         statusBox.setSelectedItem(event.getStatus());
@@ -497,6 +804,11 @@ public class AdminDashboardPanel extends JPanel {
         titleField.setText("");
         dateField.setText("");
         venueField.setText("");
+        categoryField.setText("General");
+        bannerPathField.setText("");
+        selectedAccent = ViewStyles.ACCENT;
+        accentColorButton.setBackground(selectedAccent);
+        customFieldModel.clear();
         salesStartField.setText("");
         salesEndField.setText("");
         statusBox.setSelectedItem("ON_SALE");
@@ -519,6 +831,13 @@ public class AdminDashboardPanel extends JPanel {
         } catch (DateTimeParseException exception) {
             showError("Enter " + label + " in YYYY-MM-DD format, or leave it blank.");
             return null;
+        }
+    }
+
+    private record CustomField(String name, String value) {
+        @Override
+        public String toString() {
+            return name + ": " + value;
         }
     }
 }

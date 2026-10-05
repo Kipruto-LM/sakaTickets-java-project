@@ -1,8 +1,10 @@
 package models;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class Event {
     private String eventId;
@@ -14,6 +16,11 @@ public class Event {
     private String hostId;
     private LocalDate salesStartDate;
     private LocalDate salesEndDate;
+    private String category = "General";
+    private String bannerImagePath = "";
+    private String accentColorHex = "#0D6EFD";
+    private Map<String, String> customDetails = new LinkedHashMap<>();
+    private boolean archived;
 
     public Event() {
     }
@@ -82,6 +89,18 @@ public class Event {
     public void setSalesStartDate(LocalDate salesStartDate) { this.salesStartDate = salesStartDate; }
     public LocalDate getSalesEndDate() { return salesEndDate; }
     public void setSalesEndDate(LocalDate salesEndDate) { this.salesEndDate = salesEndDate; }
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category == null || category.isBlank() ? "General" : category.trim(); }
+    public String getBannerImagePath() { return bannerImagePath; }
+    public void setBannerImagePath(String bannerImagePath) { this.bannerImagePath = bannerImagePath == null ? "" : bannerImagePath.trim(); }
+    public String getAccentColorHex() { return accentColorHex; }
+    public void setAccentColorHex(String accentColorHex) { this.accentColorHex = accentColorHex; }
+    public Map<String, String> getCustomDetails() { return new LinkedHashMap<>(customDetails); }
+    public void setCustomDetails(Map<String, String> customDetails) {
+        this.customDetails = customDetails == null ? new LinkedHashMap<>() : new LinkedHashMap<>(customDetails);
+    }
+    public boolean isArchived() { return archived; }
+    public void setArchived(boolean archived) { this.archived = archived; }
 
     public boolean canPurchaseOn(LocalDate date) {
         return "ON_SALE".equals(status)

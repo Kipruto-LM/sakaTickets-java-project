@@ -48,6 +48,10 @@ public class EventManager {
                 .collect(Collectors.toUnmodifiableList());
     }
 
+    public List<Event> getPublicEvents() {
+        return events.stream().filter(event -> !event.isArchived()).collect(Collectors.toUnmodifiableList());
+    }
+
     public void updateEvent(Event updatedEvent) {
         Objects.requireNonNull(updatedEvent, "event must not be null");
         for (int index = 0; index < events.size(); index++) {
@@ -57,6 +61,34 @@ public class EventManager {
             }
         }
         throw new IllegalArgumentException("Event not found: " + updatedEvent.getEventId());
+    }
+
+    public Event duplicateEvent(String eventId, String hostId) {
+        Event source = getEventById(eventId);
+        if (source == null) {
+            throw new IllegalArgumentException("Event not found: " + eventId);
+        }
+        List<models.TicketTier> copiedTiers = source.getTicketTiers().stream()
+                .map(tier -> new models.TicketTier(tier.getTierName(), tier.getPrice(), tier.getInitialCapacity()))
+                .collect(Collectors.toCollection(ArrayList::new));
+        Event copy = new Event("EVT-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
+                source.getTitle() + " (Copy)", source.getDate(), source.getVenue(), copiedTiers, "ON_SALE", hostId);
+        copy.setSalesStartDate(source.getSalesStartDate());
+        copy.setSalesEndDate(source.getSalesEndDate());
+        copy.setCategory(source.getCategory());
+        copy.setBannerImagePath(source.getBannerImagePath());
+        copy.setAccentColorHex(source.getAccentColorHex());
+        copy.setCustomDetails(source.getCustomDetails());
+        addEvent(copy);
+        return copy;
+    }
+
+    public void setArchived(String eventId, boolean archived) {
+        Event event = getEventById(eventId);
+        if (event == null) {
+            throw new IllegalArgumentException("Event not found: " + eventId);
+        }
+        event.setArchived(archived);
     }
 
     public void addEvent(Event event) {
