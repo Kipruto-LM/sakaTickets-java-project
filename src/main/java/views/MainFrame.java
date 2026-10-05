@@ -36,8 +36,7 @@ public class MainFrame extends JFrame {
             () -> showCard(WELCOME));
         checkoutPanel = new CheckoutPanel(eventManager, orderManager, this::showCatalog, this::showTicketSummary);
         ticketSummaryPanel = new TicketSummaryPanel(eventManager, this::showCatalog);
-        WelcomePanel welcomePanel = new WelcomePanel(eventManager, this::showCatalog,
-            () -> showCard(ADMIN_LOGIN), this::showCheckout);
+        WelcomePanel welcomePanel = new WelcomePanel(this::showCatalog, () -> showCard(ADMIN_LOGIN));
         AdminLoginPanel adminLoginPanel = new AdminLoginPanel(accountManager, this::showAdminDashboard,
             () -> showCard(WELCOME));
 

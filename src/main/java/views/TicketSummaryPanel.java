@@ -117,13 +117,13 @@ public class TicketSummaryPanel extends JPanel {
                 new EmptyBorder(12, 12, 12, 12)));
         JLabel refLabel = new JLabel("BOOKING REFERENCE");
         refLabel.setForeground(new Color(0x88, 0x96, 0xB3));
-        refLabel.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.BOLD, 10));
+        refLabel.setFont(ViewStyles.DATA_FONT.deriveFont(java.awt.Font.BOLD, 10f));
         reference.setForeground(new Color(0x00, 0xB4, 0xFF));
-        reference.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.BOLD, 17));
+        reference.setFont(ViewStyles.DATA_FONT.deriveFont(java.awt.Font.BOLD, 17f));
         receipt.add(refLabel, BorderLayout.NORTH);
         receipt.add(reference, BorderLayout.CENTER);
         total.setForeground(new Color(0x00, 0xB4, 0xFF));
-        total.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.BOLD, 16));
+        total.setFont(ViewStyles.DATA_FONT.deriveFont(java.awt.Font.BOLD, 16f));
         receipt.add(total, BorderLayout.EAST);
         constraints = new GridBagConstraints();
         constraints.gridx = 0;

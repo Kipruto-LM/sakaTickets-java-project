@@ -158,7 +158,7 @@ public class AdminDashboardPanel extends JPanel {
         brand.setBorder(new EmptyBorder(24, 18, 24, 14));
         JLabel eyebrow = new JLabel("ADMIN PANEL");
         eyebrow.setForeground(new Color(0x88, 0x96, 0xB3));
-        eyebrow.setFont(new Font(Font.MONOSPACED, Font.BOLD, 10));
+        eyebrow.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 10f));
         JLabel logo = new JLabel("SakaTickets");
         ViewStyles.styleHeading(logo, 16f);
         brand.add(eyebrow);
@@ -259,9 +259,9 @@ public class AdminDashboardPanel extends JPanel {
                 new EmptyBorder(15, 16, 14, 16)));
         JLabel caption = new JLabel(label);
         caption.setForeground(new Color(0x88, 0x96, 0xB3));
-        caption.setFont(new Font(Font.MONOSPACED, Font.BOLD, 10));
+        caption.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 10f));
         value.setForeground(new Color(0x00, 0xB4, 0xFF));
-        value.setFont(new Font(Font.MONOSPACED, Font.BOLD, 22));
+        value.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 22f));
         ViewStyles.styleSecondaryText(hint, 11f);
         card.add(caption);
         card.add(value);
@@ -287,7 +287,7 @@ public class AdminDashboardPanel extends JPanel {
         ViewStyles.styleSecondaryText(name, 13f);
         JLabel count = new JLabel(value);
         count.setForeground(color);
-        count.setFont(new Font(Font.MONOSPACED, Font.BOLD, 16));
+        count.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 16f));
         row.add(name, BorderLayout.WEST);
         row.add(count, BorderLayout.EAST);
         panel.add(row);
@@ -400,7 +400,7 @@ public class AdminDashboardPanel extends JPanel {
         for (int index = 0; index < labels.length; index++) {
             JLabel label = new JLabel(labels[index]);
             label.setForeground(new Color(0x88, 0x96, 0xB3));
-            label.setFont(new Font(Font.MONOSPACED, Font.BOLD, 9));
+            label.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 9f));
             GridBagConstraints constraints = columnConstraints(index, weights[index]);
             constraints.insets = new Insets(12, 10, 12, 6);
             header.add(label, constraints);
@@ -448,7 +448,7 @@ public class AdminDashboardPanel extends JPanel {
 
         JLabel status = new JLabel(statusText(event.getStatus()));
         status.setForeground(statusColor(event.getStatus()));
-        status.setFont(new Font(Font.MONOSPACED, Font.BOLD, 9));
+        status.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 9f));
         row.add(status, columnConstraints(5, .11));
         row.add(buildRowActions(event), columnConstraints(6, .10));
         for (java.awt.Component component : row.getComponents()) {
@@ -496,7 +496,7 @@ public class AdminDashboardPanel extends JPanel {
     private JLabel monoLabel(String text, Color color) {
         JLabel label = new JLabel(text);
         label.setForeground(color);
-        label.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
+        label.setFont(ViewStyles.DATA_FONT.deriveFont(Font.PLAIN, 11f));
         return label;
     }
 

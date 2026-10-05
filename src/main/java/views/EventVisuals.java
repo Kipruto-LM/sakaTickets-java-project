@@ -23,7 +23,15 @@ final class EventVisuals {
     }
 
     static JPanel hero(int height, int cornerRadius) {
-        return imagePanel(HERO, height, cornerRadius, 0.72f);
+        return imagePanel(HERO, height, cornerRadius, 0.16f);
+    }
+
+    static JPanel buyerChoice(int height, int cornerRadius) {
+        return imagePanel(HERO, height, cornerRadius, 0.08f);
+    }
+
+    static JPanel hostChoice(int height, int cornerRadius) {
+        return imagePanel(loadResource("/images/event-tech.jpg"), height, cornerRadius, 0.08f);
     }
 
     static JPanel event(Event event, int height, int cornerRadius) {

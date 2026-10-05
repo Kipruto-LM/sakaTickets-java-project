@@ -99,7 +99,7 @@ public class EventCatalogPanel extends JPanel {
 
         JLabel category = new JLabel(event.getCategory().toUpperCase(java.util.Locale.ROOT));
         category.setForeground(new Color(0x00, 0xE5, 0xC4));
-        category.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.BOLD, 9));
+        category.setFont(ViewStyles.DATA_FONT.deriveFont(java.awt.Font.BOLD, 9f));
         category.setAlignmentX(LEFT_ALIGNMENT);
         details.add(title);
         details.add(category);
