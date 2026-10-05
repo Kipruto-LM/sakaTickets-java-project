@@ -2,9 +2,11 @@ package views;
 
 import controllers.EventManager;
 import controllers.OrderManager;
+import controllers.AccountManager;
 import java.awt.CardLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import models.User;
 
 public class MainFrame extends JFrame {
     private static final String WELCOME = "Welcome";
@@ -16,34 +18,36 @@ public class MainFrame extends JFrame {
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel cardPanel = new JPanel(cardLayout);
     private final EventManager eventManager;
+    private final AccountManager accountManager;
+    private final OrderManager orderManager;
     private final CheckoutPanel checkoutPanel;
     private final EventCatalogPanel catalogPanel;
-    private final AdminDashboardPanel adminDashboardPanel;
+    private AdminDashboardPanel adminDashboardPanel;
 
     public MainFrame() {
         eventManager = new EventManager();
-        OrderManager orderManager = new OrderManager();
+        accountManager = new AccountManager();
+        orderManager = new OrderManager();
 
         catalogPanel = new EventCatalogPanel(eventManager, this::showCheckout,
             () -> showCard(WELCOME));
         checkoutPanel = new CheckoutPanel(eventManager, orderManager, this::showCatalog);
         WelcomePanel welcomePanel = new WelcomePanel(this::showCatalog, () -> showCard(ADMIN_LOGIN));
-        AdminLoginPanel adminLoginPanel = new AdminLoginPanel(this::showAdminDashboard,
+        AdminLoginPanel adminLoginPanel = new AdminLoginPanel(accountManager, this::showAdminDashboard,
             () -> showCard(WELCOME));
-        adminDashboardPanel = new AdminDashboardPanel(eventManager, orderManager, () -> showCard(WELCOME),
-            "admin-001", "Talel");
 
         cardPanel.add(welcomePanel, WELCOME);
         cardPanel.add(catalogPanel, CATALOG);
         cardPanel.add(checkoutPanel, CHECKOUT);
         cardPanel.add(adminLoginPanel, ADMIN_LOGIN);
-        cardPanel.add(adminDashboardPanel, ADMIN_DASHBOARD);
 
         setTitle("SakaTickets");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setContentPane(cardPanel);
-        setSize(900, 600);
-        setLocationRelativeTo(null);
+        setMinimumSize(new java.awt.Dimension(900, 600));
+        setSize(1200, 800);
+        setLocationByPlatform(true);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
         cardLayout.show(cardPanel, WELCOME);
     }
 
@@ -57,7 +61,13 @@ public class MainFrame extends JFrame {
         showCard(CATALOG);
     }
 
-    private void showAdminDashboard() {
+    private void showAdminDashboard(User user) {
+        if (adminDashboardPanel != null) {
+            cardPanel.remove(adminDashboardPanel);
+        }
+        adminDashboardPanel = new AdminDashboardPanel(eventManager, orderManager,
+                () -> showCard(WELCOME), user.getUserId(), user.getName());
+        cardPanel.add(adminDashboardPanel, ADMIN_DASHBOARD);
         adminDashboardPanel.refreshEvents();
         showCard(ADMIN_DASHBOARD);
     }
