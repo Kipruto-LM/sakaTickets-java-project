@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import models.Event;
 
 public class EventManager {
@@ -25,6 +26,7 @@ public class EventManager {
             "Sarit Expo Centre", 250, 1000.00));
         events.add(new Event("EVT-007", "Rift Valley Trail Run", "2026-11-22",
             "Hell's Gate National Park", 180, 750.00));
+        events.forEach(event -> event.setHostId("admin-001"));
     }
 
     public List<Event> getEvents() {
@@ -38,6 +40,23 @@ public class EventManager {
             }
         }
         return null;
+    }
+
+    public List<Event> getEventsByHostId(String hostId) {
+        return events.stream()
+                .filter(event -> Objects.equals(event.getHostId(), hostId))
+                .collect(Collectors.toUnmodifiableList());
+    }
+
+    public void updateEvent(Event updatedEvent) {
+        Objects.requireNonNull(updatedEvent, "event must not be null");
+        for (int index = 0; index < events.size(); index++) {
+            if (Objects.equals(events.get(index).getEventId(), updatedEvent.getEventId())) {
+                events.set(index, updatedEvent);
+                return;
+            }
+        }
+        throw new IllegalArgumentException("Event not found: " + updatedEvent.getEventId());
     }
 
     public void addEvent(Event event) {

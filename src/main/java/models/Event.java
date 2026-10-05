@@ -2,6 +2,7 @@ package models;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDate;
 
 public class Event {
     private String eventId;
@@ -11,6 +12,8 @@ public class Event {
     private List<TicketTier> ticketTiers = new ArrayList<>();
     private String status = "ON_SALE";
     private String hostId;
+    private LocalDate salesStartDate;
+    private LocalDate salesEndDate;
 
     public Event() {
     }
@@ -75,9 +78,19 @@ public class Event {
     public void setStatus(String status) { this.status = status; }
     public String getHostId() { return hostId; }
     public void setHostId(String hostId) { this.hostId = hostId; }
+    public LocalDate getSalesStartDate() { return salesStartDate; }
+    public void setSalesStartDate(LocalDate salesStartDate) { this.salesStartDate = salesStartDate; }
+    public LocalDate getSalesEndDate() { return salesEndDate; }
+    public void setSalesEndDate(LocalDate salesEndDate) { this.salesEndDate = salesEndDate; }
+
+    public boolean canPurchaseOn(LocalDate date) {
+        return "ON_SALE".equals(status)
+                && (salesStartDate == null || !date.isBefore(salesStartDate))
+                && (salesEndDate == null || !date.isAfter(salesEndDate));
+    }
 
     public boolean purchase(String tierName, int quantity) {
-        if (!"ON_SALE".equals(status) || tierName == null) {
+        if (!canPurchaseOn(LocalDate.now()) || tierName == null) {
             return false;
         }
         for (TicketTier tier : ticketTiers) {

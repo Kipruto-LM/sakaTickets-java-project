@@ -18,6 +18,7 @@ public class MainFrame extends JFrame {
     private final EventManager eventManager;
     private final CheckoutPanel checkoutPanel;
     private final EventCatalogPanel catalogPanel;
+    private final AdminDashboardPanel adminDashboardPanel;
 
     public MainFrame() {
         eventManager = new EventManager();
@@ -27,9 +28,10 @@ public class MainFrame extends JFrame {
             () -> showCard(WELCOME));
         checkoutPanel = new CheckoutPanel(eventManager, orderManager, this::showCatalog);
         WelcomePanel welcomePanel = new WelcomePanel(this::showCatalog, () -> showCard(ADMIN_LOGIN));
-        AdminLoginPanel adminLoginPanel = new AdminLoginPanel(() -> showCard(ADMIN_DASHBOARD),
+        AdminLoginPanel adminLoginPanel = new AdminLoginPanel(this::showAdminDashboard,
             () -> showCard(WELCOME));
-        AdminDashboardPanel adminDashboardPanel = new AdminDashboardPanel(eventManager, () -> showCard(WELCOME));
+        adminDashboardPanel = new AdminDashboardPanel(eventManager, orderManager, () -> showCard(WELCOME),
+            "admin-001", "Talel");
 
         cardPanel.add(welcomePanel, WELCOME);
         cardPanel.add(catalogPanel, CATALOG);
@@ -53,6 +55,11 @@ public class MainFrame extends JFrame {
     private void showCatalog() {
         catalogPanel.refreshEvents();
         showCard(CATALOG);
+    }
+
+    private void showAdminDashboard() {
+        adminDashboardPanel.refreshEvents();
+        showCard(ADMIN_DASHBOARD);
     }
 
     private void showCard(String cardName) {
