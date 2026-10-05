@@ -712,10 +712,10 @@ public class AdminDashboardPanel extends JPanel {
         constraints.weightx = 1;
         constraints.fill = GridBagConstraints.HORIZONTAL;
         constraints.insets = new Insets(10, 0, 5, 0);
-        form.add(buildCustomFields(), constraints);
+        form.add(buildTierManager(), constraints);
 
         constraints.gridy = 11;
-        form.add(buildTierManager(), constraints);
+        form.add(buildCustomFields(), constraints);
 
         JButton save = new JButton("Save Event");
         ViewStyles.stylePrimaryButton(save);

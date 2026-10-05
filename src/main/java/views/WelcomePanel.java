@@ -75,9 +75,9 @@ public class WelcomePanel extends JPanel {
         JLabel eyebrow = new JLabel("GOOD THINGS HAPPEN HERE");
         eyebrow.setForeground(new Color(0x00, 0xE5, 0xC4));
         eyebrow.setFont(ViewStyles.DATA_FONT.deriveFont(java.awt.Font.BOLD, 10f));
-        JLabel heading = new JLabel("How do you want to show up?");
+        JLabel heading = new JLabel("Good things happen when you show up.");
         ViewStyles.styleHeading(heading, 33f);
-        JLabel description = new JLabel("Find your next unforgettable night, or make one happen.");
+        JLabel description = new JLabel("Discover Nairobi events, book tickets, or bring your own idea to life.");
         ViewStyles.styleSecondaryText(description, 15f);
         JPanel copy = new JPanel();
         copy.setOpaque(false);
