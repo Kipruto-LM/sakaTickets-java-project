@@ -6,11 +6,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/** Event aggregate: schedule, host, lifecycle state, presentation options, and tier inventory. */
 public class Event {
+    // Stable identity and public event details.
     private String eventId;
     private String title;
     private String date;
     private String venue;
+    // Saleable inventory and publication lifecycle.
     private List<TicketTier> ticketTiers = new ArrayList<>();
     private String status = "ON_SALE";
     private String hostId;
@@ -22,9 +25,11 @@ public class Event {
     private Map<String, String> customDetails = new LinkedHashMap<>();
     private boolean archived;
 
+    /** No-argument constructor for bean-style tools and serialization. */
     public Event() {
     }
 
+    /** Creates an event with its tier inventory and owning host. */
     public Event(String eventId, String title, String date, String venue, List<TicketTier> ticketTiers,
             String status, String hostId) {
         this.eventId = eventId;
@@ -36,11 +41,13 @@ public class Event {
         this.hostId = hostId;
     }
 
+    /** Compatibility constructor that wraps a single legacy price/capacity in a Regular tier. */
     public Event(String eventId, String title, String date, String venue, int availableSeats, double ticketPrice) {
         this(eventId, title, date, venue,
                 List.of(new TicketTier("Regular", ticketPrice, availableSeats)), "ON_SALE", "");
     }
 
+    // Bean accessors expose event identity and display information to controllers and views.
     public String getEventId() {
         return eventId;
     }
@@ -73,6 +80,7 @@ public class Event {
         this.venue = venue;
     }
 
+    // Tier inventory is copied on assignment so callers cannot replace the event's list reference.
     public List<TicketTier> getTicketTiers() {
         return ticketTiers;
     }
@@ -81,6 +89,7 @@ public class Event {
         this.ticketTiers = ticketTiers == null ? new ArrayList<>() : new ArrayList<>(ticketTiers);
     }
 
+    // Theme and host-created metadata used by the event catalog and detail screen.
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public String getHostId() { return hostId; }
@@ -102,12 +111,14 @@ public class Event {
     public boolean isArchived() { return archived; }
     public void setArchived(boolean archived) { this.archived = archived; }
 
+    /** Checks the event status and inclusive sale-window dates for the supplied day. */
     public boolean canPurchaseOn(LocalDate date) {
         return "ON_SALE".equals(status)
                 && (salesStartDate == null || !date.isBefore(salesStartDate))
                 && (salesEndDate == null || !date.isAfter(salesEndDate));
     }
 
+    /** Deducts tickets from a named tier only while the event is open for sales. */
     public boolean purchase(String tierName, int quantity) {
         if (!canPurchaseOn(LocalDate.now()) || tierName == null) {
             return false;
@@ -123,14 +134,17 @@ public class Event {
         return false;
     }
 
+    /** Returns inventory summed across all ticket tiers. */
     public int getAvailableSeats() {
         return ticketTiers.stream().mapToInt(TicketTier::getAvailableSeats).sum();
     }
 
+    /** Legacy price accessor; newer screens should read the selected tier price. */
     public double getTicketPrice() {
         return ticketTiers.isEmpty() ? 0.0 : ticketTiers.get(0).getPrice();
     }
 
+    /** Legacy purchase entry point that targets the first tier. */
     public boolean purchaseTickets(int amount) {
         return !ticketTiers.isEmpty() && purchase(ticketTiers.get(0).getTierName(), amount);
     }

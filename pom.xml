@@ -8,11 +8,13 @@
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
+    <!-- The project uses the standard Maven source tree and Java 25 language/runtime APIs. -->
     <properties>
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <!-- FlatLaf provides the two application themes; JCalendar provides admin date pickers. -->
     <dependencies>
         <dependency>
             <groupId>com.formdev</groupId>

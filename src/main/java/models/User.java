@@ -7,13 +7,16 @@ import java.util.Base64;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
+/** Host account profile. Passwords are represented by a random salt and PBKDF2 hash, never plaintext. */
 public class User {
+    // Demo account values seed the first local host profile.
     public static final String DEFAULT_ADMIN_USERNAME = "Talel";
     public static final String DEFAULT_ADMIN_PASSWORD = "admin123";
     private static final int PASSWORD_ITERATIONS = 120_000;
     private static final int KEY_LENGTH = 256;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
+    // Profile data and one-way password verifier material.
     private String userId;
     private String name;
     private String email;
@@ -94,6 +97,7 @@ public class User {
         Arrays.fill(hash, (byte) 0);
     }
 
+    /** Loads a persisted profile without requiring a plaintext password. */
     public static User fromPasswordHash(String userId, String name, String email, String username,
             String salt, String hash) {
         User user = new User();
@@ -106,6 +110,7 @@ public class User {
         return user;
     }
 
+    /** Derives a fixed-length PBKDF2-HMAC-SHA256 verifier and clears the temporary key spec. */
     private static byte[] deriveHash(char[] password, byte[] salt) {
         PBEKeySpec spec = new PBEKeySpec(password, salt, PASSWORD_ITERATIONS, KEY_LENGTH);
         try {
@@ -117,6 +122,7 @@ public class User {
         }
     }
 
+    // Profile accessors; password getters intentionally expose only salt/hash for local storage.
     public String getUserId() {
         return userId;
     }

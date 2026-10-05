@@ -7,7 +7,9 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import models.Event;
 
+/** Owns the in-memory event catalog and host-scoped event lifecycle operations. */
 public class EventManager {
+    // MVP event store; demo entries are assigned tailored artwork and the seeded host ID.
     private final List<Event> events;
 
     public EventManager() {
@@ -36,11 +38,13 @@ public class EventManager {
         events.forEach(event -> event.setHostId("admin-001"));
     }
 
+    /** Applies a category and bundled image path to one seeded event. */
     private void assignArtwork(Event event, String category, String imagePath) {
         event.setCategory(category);
         event.setBannerImagePath(imagePath);
     }
 
+    // Query methods return snapshots where callers should not mutate the catalog directly.
     public List<Event> getEvents() {
         return Collections.unmodifiableList(events);
     }
@@ -54,16 +58,19 @@ public class EventManager {
         return null;
     }
 
+    /** Returns the events owned by one authenticated host. */
     public List<Event> getEventsByHostId(String hostId) {
         return events.stream()
                 .filter(event -> Objects.equals(event.getHostId(), hostId))
                 .collect(Collectors.toUnmodifiableList());
     }
 
+    /** Hides archived events from guest-facing pages while preserving them for hosts. */
     public List<Event> getPublicEvents() {
         return events.stream().filter(event -> !event.isArchived()).collect(Collectors.toUnmodifiableList());
     }
 
+    /** Replaces an existing event by ID, rejecting updates for unknown events. */
     public void updateEvent(Event updatedEvent) {
         Objects.requireNonNull(updatedEvent, "event must not be null");
         for (int index = 0; index < events.size(); index++) {
@@ -75,6 +82,7 @@ public class EventManager {
         throw new IllegalArgumentException("Event not found: " + updatedEvent.getEventId());
     }
 
+    /** Copies an event's setup and styling into a fresh, unsold event owned by the host. */
     public Event duplicateEvent(String eventId, String hostId) {
         Event source = getEventById(eventId);
         if (source == null) {
@@ -95,6 +103,7 @@ public class EventManager {
         return copy;
     }
 
+    /** Toggles catalog visibility without deleting sales history. */
     public void setArchived(String eventId, boolean archived) {
         Event event = getEventById(eventId);
         if (event == null) {

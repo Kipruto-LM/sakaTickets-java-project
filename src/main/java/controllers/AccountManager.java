@@ -16,14 +16,18 @@ import java.util.Properties;
 import java.util.UUID;
 import models.User;
 
+/** Registers local host accounts, verifies logins, and atomically stores hashed credentials. */
 public class AccountManager {
+    // The account map is indexed by normalized usernames so lookup is case-insensitive.
     private final Path accountFile;
     private final Map<String, User> accounts = new LinkedHashMap<>();
 
+    /** Uses the user's home directory for the local account store. */
     public AccountManager() {
         this(Path.of(System.getProperty("user.home"), ".sakatickets", "hosts.properties"));
     }
 
+    /** Loads any saved hosts and ensures the demo admin exists for first-time use. */
     public AccountManager(Path accountFile) {
         this.accountFile = accountFile.toAbsolutePath();
         try {
@@ -34,6 +38,7 @@ public class AccountManager {
         }
     }
 
+    /** Validates and persists a new host; removes the in-memory account if writing fails. */
     public synchronized User register(String name, String email, String username, char[] password)
             throws IOException {
         String cleanName = requireText(name, "Name");
@@ -64,6 +69,7 @@ public class AccountManager {
         return user;
     }
 
+    /** Returns a host only when its username and salted password verifier match. */
     public synchronized Optional<User> authenticate(String username, char[] password) {
         if (username == null || password == null) {
             return Optional.empty();
@@ -72,6 +78,8 @@ public class AccountManager {
         return user != null && user.authenticate(password) ? Optional.of(user) : Optional.empty();
     }
 
+    // Local persistence helpers keep credential serialization out of Swing panels.
+    /** Creates the demo host once, without replacing any existing local account. */
     private void ensureDefaultAdmin() throws IOException {
         String key = accountKey(User.DEFAULT_ADMIN_USERNAME);
         if (!accounts.containsKey(key)) {
@@ -81,6 +89,7 @@ public class AccountManager {
         }
     }
 
+    /** Reconstructs host profiles from properties containing IDs, salts, and password hashes. */
     private void loadAccounts() throws IOException {
         if (!Files.exists(accountFile)) {
             return;
@@ -102,6 +111,7 @@ public class AccountManager {
         }
     }
 
+    /** Writes a complete account snapshot and atomically swaps it into place when supported. */
     private void saveAccounts() throws IOException {
         Properties properties = new Properties();
         for (User user : accounts.values()) {
@@ -131,6 +141,7 @@ public class AccountManager {
         }
     }
 
+    /** Normalizes usernames so authentication is case-insensitive. */
     private static String accountKey(String username) {
         return username.trim().toLowerCase(Locale.ROOT);
     }

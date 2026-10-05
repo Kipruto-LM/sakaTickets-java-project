@@ -1,29 +1,22 @@
 import views.MainFrame;
-import com.formdev.flatlaf.FlatDarkLaf;
-import java.awt.Font;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
+import views.ThemeManager;
 
+/** Starts SakaTickets after loading saved theme preferences and configuring shared fonts. */
 public class Main {
+    /** Initializes appearance defaults, constructs the frame, and maximizes after first paint. */
     public static void main(String[] args) {
-        try {
-            UIManager.setLookAndFeel(new FlatDarkLaf());
-        } catch (Throwable ignored) {
-            // Fall back to the platform Swing theme if FlatLaf is unavailable.
-        }
-        Font bodyFont = new Font("Ubuntu Sans", Font.PLAIN, 14);
-        UIManager.put("defaultFont", bodyFont);
-        for (String key : new String[] {"Label.font", "Button.font", "TextField.font", "PasswordField.font",
-                "ComboBox.font", "List.font", "Table.font", "MenuItem.font", "OptionPane.messageFont"}) {
-            UIManager.put(key, bodyFont);
-        }
+        // Install the saved FlatLaf theme before Swing constructs any components.
+        ThemeManager.initialize();
+        // Create and show Swing windows on the event-dispatch thread.
         SwingUtilities.invokeLater(() -> {
             MainFrame app = new MainFrame();
             app.setVisible(true);
             app.validate();
             app.repaint();
             SwingUtilities.invokeLater(() -> {
+                // Maximize after the first visible paint so window managers calculate bounds correctly.
                 app.setExtendedState(JFrame.MAXIMIZED_BOTH);
                 app.validate();
                 app.repaint();

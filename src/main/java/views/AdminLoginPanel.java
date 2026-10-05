@@ -22,7 +22,9 @@ import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 import models.User;
 
+/** Host account entry point with separate sign-in and registration forms. */
 public class AdminLoginPanel extends JPanel {
+    // Credentials are passed directly to AccountManager; passwords are cleared after use.
     private final AccountManager accountManager;
     private final Consumer<User> loginSuccess;
     private final JTextField loginUsername = new JTextField(20);
@@ -109,6 +111,7 @@ public class AdminLoginPanel extends JPanel {
         return intro;
     }
 
+    // Each tab owns one focused account workflow.
     private JPanel buildLoginForm() {
         JPanel form = createForm("Host Sign In");
         styleInputs(loginUsername, loginPassword);
@@ -140,6 +143,7 @@ public class AdminLoginPanel extends JPanel {
         return form;
     }
 
+    // Shared account-form construction and aligned labels/inputs.
     private JPanel createForm(String title) {
         JPanel form = new JPanel(new GridBagLayout());
         form.setBackground(new Color(0x17, 0x1B, 0x24));
@@ -202,6 +206,7 @@ public class AdminLoginPanel extends JPanel {
         }
     }
 
+    /** Verifies a host account and returns the authenticated profile to MainFrame. */
     private void authenticate() {
         char[] password = loginPassword.getPassword();
         try {
@@ -219,6 +224,7 @@ public class AdminLoginPanel extends JPanel {
         }
     }
 
+    /** Validates confirmation, registers the host, then opens that host's dashboard. */
     private void register() {
         char[] password = passwordField.getPassword();
         char[] confirmation = confirmPasswordField.getPassword();

@@ -4,6 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -12,7 +14,12 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
+/** First-run role chooser that routes visitors to event browsing or host sign-in. */
 public class WelcomePanel extends JPanel {
+    private JPanel buyerArtwork;
+    private JPanel hostArtwork;
+
+    /** Presents the two primary app paths and their event-specific imagery. */
     public WelcomePanel(Runnable browseEvents, Runnable hostEventAction) {
         setLayout(new BorderLayout(0, 24));
         setBackground(new Color(0x0F, 0x11, 0x17));
@@ -24,30 +31,48 @@ public class WelcomePanel extends JPanel {
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         JPanel introduction = buildIntroduction();
         introduction.setAlignmentX(LEFT_ALIGNMENT);
-        introduction.setMaximumSize(new Dimension(Integer.MAX_VALUE,
-            introduction.getPreferredSize().height));
+        introduction.setMaximumSize(new Dimension(Integer.MAX_VALUE, introduction.getPreferredSize().height));
         content.add(introduction);
         content.add(Box.createVerticalStrut(22));
+
         JPanel choices = new JPanel(new GridLayout(1, 2, 18, 0));
         choices.setOpaque(false);
+        buyerArtwork = EventVisuals.buyerChoice(216, 12);
+        hostArtwork = EventVisuals.hostChoice(216, 12);
         choices.add(buildChoice("01   /   ATTEND", "Find your people.\nFind your next thing.",
-            "Live music, food, culture and ideas worth leaving home for.", "Browse events",
-            EventVisuals.buyerChoice(216, 12), ViewStyles.ACCENT, Color.WHITE, browseEvents));
+                "Live music, food, culture and ideas worth leaving home for.", "Browse events",
+                buyerArtwork, ViewStyles.ACCENT, Color.WHITE, browseEvents));
         choices.add(buildChoice("02   /   CREATE", "Put your event\non the map.",
-            "Build your event, shape ticket tiers, and follow every sale.", "Start hosting",
-            EventVisuals.hostChoice(216, 12), new Color(0x00, 0xE5, 0xC4), new Color(0x0F, 0x11, 0x17),
-                hostEventAction));
-        choices.setPreferredSize(new Dimension(1000, 438));
-            choices.setMaximumSize(new Dimension(Integer.MAX_VALUE, 438));
-            choices.setAlignmentX(LEFT_ALIGNMENT);
-            content.add(choices);
-            content.add(Box.createVerticalGlue());
-            JPanel footer = buildFooter();
-            footer.setAlignmentX(LEFT_ALIGNMENT);
-            content.add(footer);
+                "Build your event, shape ticket tiers, and follow every sale.", "Start hosting",
+                hostArtwork, new Color(0x00, 0xE5, 0xC4), new Color(0x0F, 0x11, 0x17), hostEventAction));
+        choices.setAlignmentX(LEFT_ALIGNMENT);
+        choices.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        content.add(choices);
+        content.add(Box.createVerticalGlue());
+        JPanel footer = buildFooter();
+        footer.setAlignmentX(LEFT_ALIGNMENT);
+        content.add(footer);
         add(content, BorderLayout.CENTER);
+
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent event) {
+                resizeRoleArtwork();
+            }
+        });
     }
 
+    /** Keeps role photos proportional to their available card width on wide screens. */
+    private void resizeRoleArtwork() {
+        if (getWidth() <= 0) return;
+        int cardWidth = Math.max(360, (getWidth() - 76 - 18) / 2);
+        int imageHeight = Math.max(216, Math.min(500, (int) (cardWidth * 0.54)));
+        buyerArtwork.setPreferredSize(new Dimension(480, imageHeight));
+        hostArtwork.setPreferredSize(new Dimension(480, imageHeight));
+        revalidate();
+    }
+
+    /** Brand and location strip above the buyer/host role choices. */
     private JPanel buildHeader() {
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
@@ -69,6 +94,7 @@ public class WelcomePanel extends JPanel {
         return header;
     }
 
+    /** Short opening message that explains the two paths into the application. */
     private JPanel buildIntroduction() {
         JPanel introduction = new JPanel(new BorderLayout(0, 8));
         introduction.setOpaque(false);
@@ -83,14 +109,15 @@ public class WelcomePanel extends JPanel {
         copy.setOpaque(false);
         copy.setLayout(new BoxLayout(copy, BoxLayout.Y_AXIS));
         copy.add(eyebrow);
-        copy.add(javax.swing.Box.createVerticalStrut(8));
+        copy.add(Box.createVerticalStrut(8));
         copy.add(heading);
-        copy.add(javax.swing.Box.createVerticalStrut(4));
+        copy.add(Box.createVerticalStrut(4));
         copy.add(description);
         introduction.add(copy, BorderLayout.WEST);
         return introduction;
     }
 
+    /** Builds a photo-led role card with separate descriptive copy and a clear action. */
     private JPanel buildChoice(String index, String title, String description, String buttonText,
             JPanel image, Color buttonColor, Color buttonTextColor, Runnable action) {
         JPanel choice = new JPanel(new BorderLayout(0, 0));
@@ -115,9 +142,9 @@ public class WelcomePanel extends JPanel {
         JLabel explanation = new JLabel("<html>" + description + "</html>");
         ViewStyles.styleSecondaryText(explanation, 13f);
         words.add(eyebrow);
-        words.add(javax.swing.Box.createVerticalStrut(7));
+        words.add(Box.createVerticalStrut(7));
         words.add(heading);
-        words.add(javax.swing.Box.createVerticalStrut(6));
+        words.add(Box.createVerticalStrut(6));
         words.add(explanation);
 
         JButton choose = new JButton(buttonText);
@@ -138,11 +165,11 @@ public class WelcomePanel extends JPanel {
         copy.add(words, BorderLayout.CENTER);
         copy.add(actionRow, BorderLayout.SOUTH);
         choice.add(copy, BorderLayout.CENTER);
-        choice.setPreferredSize(new Dimension(520, 438));
         choice.setMinimumSize(new Dimension(300, 360));
         return choice;
     }
 
+    /** Quiet location-specific footer that anchors the landing page. */
     private JPanel buildFooter() {
         JPanel footer = new JPanel(new BorderLayout());
         footer.setOpaque(false);

@@ -16,6 +16,7 @@ import javax.swing.border.EmptyBorder;
 import models.Booking;
 import models.Event;
 
+/** Guest receipt screen showing the confirmed event, ticket tier, quantity, and reference. */
 public class TicketSummaryPanel extends JPanel {
     private final EventManager eventManager;
     private final Runnable backToEvents;
@@ -35,6 +36,7 @@ public class TicketSummaryPanel extends JPanel {
         buildView();
     }
 
+    /** Populates receipt labels and artwork from the completed booking. */
     public void setBooking(Booking booking) {
         Event event = eventManager.getEventById(booking.getEventId());
         hero.removeAll();
@@ -52,6 +54,7 @@ public class TicketSummaryPanel extends JPanel {
         total.setText(String.format("KES %,.2f", booking.getTotalPrice()));
     }
 
+    // Receipt layout pairs a success masthead and event visual with booking details.
     private void buildView() {
         setLayout(new GridBagLayout());
         setBackground(new Color(0x0F, 0x11, 0x17));
@@ -146,6 +149,7 @@ public class TicketSummaryPanel extends JPanel {
         add(summary);
     }
 
+    /** Adds one aligned attendee/event/ticket detail line to the receipt. */
     private void addInfo(JPanel panel, String label, JLabel value, int row) {
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridy = row;

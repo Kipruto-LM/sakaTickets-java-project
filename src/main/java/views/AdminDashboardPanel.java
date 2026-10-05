@@ -23,6 +23,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JCheckBox;
 import javax.swing.JColorChooser;
@@ -50,13 +51,18 @@ import com.toedter.calendar.JDateChooser;
 import models.Event;
 import models.TicketTier;
 
+/** Host workspace for event analytics, ticket inventory, appearance, and event editing. */
 public class AdminDashboardPanel extends JPanel {
+    // Valid lifecycle states shared by filters and the event editor.
     private static final String[] EVENT_STATUSES = {"ON_SALE", "PAUSED", "CANCELLED", "SOLD_OUT"};
 
+    // Shared domain services, identity, and sidebar/card navigation state.
     private final EventManager eventManager;
     private final OrderManager orderManager;
     private final Runnable logoutAction;
     private final String hostId;
+    private final Consumer<Boolean> themeChange;
+    private final Consumer<Color> accentChange;
     private final JPanel eventList = new JPanel();
     private final JPanel eventState = new JPanel(new java.awt.CardLayout());
     private final java.awt.CardLayout pageLayout = new java.awt.CardLayout();
@@ -72,12 +78,14 @@ public class AdminDashboardPanel extends JPanel {
     private final JLabel revenueHint = new JLabel("before platform fees");
     private final JButton createEventButton = new JButton("+  Create New Event");
     private String activePage = "Manage Events";
+    // Event details and sale-window form controls.
     private final JTextField titleField = new JTextField(28);
     private final JDateChooser dateChooser = createDateChooser();
     private final JTextField venueField = new JTextField(28);
     private final JDateChooser salesStartChooser = createDateChooser();
     private final JDateChooser salesEndChooser = createDateChooser();
     private final JLabel validationLabel = new JLabel(" ");
+    // Event appearance, custom details, and ticket-tier editor state.
     private final JTextField categoryField = new JTextField(28);
     private final JTextField bannerPathField = new JTextField(22);
     private final JTextField customNameField = new JTextField(12);
@@ -101,6 +109,7 @@ public class AdminDashboardPanel extends JPanel {
         private Color selectedAccent = ViewStyles.ACCENT;
     private Event editingEvent;
 
+        /** Builds a date picker whose editor and saved value use ISO local dates. */
     private static JDateChooser createDateChooser() {
         JDateChooser chooser = new JDateChooser();
         chooser.setDateFormatString("yyyy-MM-dd");
@@ -109,16 +118,26 @@ public class AdminDashboardPanel extends JPanel {
         return chooser;
     }
 
+    /** Connects shared event/order services and builds the host-specific dashboard. */
     public AdminDashboardPanel(EventManager eventManager, OrderManager orderManager, Runnable logoutAction,
             String hostId, String hostName) {
+        this(eventManager, orderManager, logoutAction, hostId, hostName,
+            ThemeManager::setDarkMode, ThemeManager::setAccentColor);
+        }
+
+        public AdminDashboardPanel(EventManager eventManager, OrderManager orderManager, Runnable logoutAction,
+            String hostId, String hostName, Consumer<Boolean> themeChange, Consumer<Color> accentChange) {
         this.eventManager = eventManager;
         this.orderManager = orderManager;
         this.logoutAction = logoutAction;
         this.hostId = hostId;
+        this.themeChange = themeChange;
+        this.accentChange = accentChange;
         buildPanel(hostName);
         refreshEvents();
     }
 
+    /** Reapplies host ownership, filters, live metrics, and the selected inventory state. */
     public void refreshEvents() {
         eventList.removeAll();
         List<Event> allEvents = eventManager.getEventsByHostId(hostId);
@@ -139,6 +158,7 @@ public class AdminDashboardPanel extends JPanel {
         eventList.repaint();
     }
 
+    // Page shell: fixed sidebar and card-switched work area.
     private void buildPanel(String hostName) {
         setLayout(new BorderLayout());
         setBackground(new Color(0x0F, 0x11, 0x17));
@@ -159,6 +179,7 @@ public class AdminDashboardPanel extends JPanel {
         showPage("Overview");
     }
 
+    // Sidebar branding, page navigation, and signed-in host controls.
     private JPanel buildSidebar(String name) {
         JPanel sidebar = new JPanel(new BorderLayout());
         sidebar.setPreferredSize(new Dimension(224, 0));
@@ -225,6 +246,7 @@ public class AdminDashboardPanel extends JPanel {
         return sidebar;
     }
 
+    // Shared title/action bar shown above all dashboard pages.
     private JPanel buildTopBar() {
         JPanel top = new JPanel(new BorderLayout(14, 0));
         top.setOpaque(false);
@@ -261,6 +283,7 @@ public class AdminDashboardPanel extends JPanel {
         return top;
     }
 
+    // Overview pages: live totals, event status counts, and a route to inventory.
     private JPanel buildOverviewPage(String name) {
         JPanel page = new JPanel(new BorderLayout(0, 18));
         page.setOpaque(false);
@@ -382,6 +405,7 @@ public class AdminDashboardPanel extends JPanel {
         return panel;
     }
 
+    // Search/filter controls and the responsive inventory table.
     private JPanel buildManageEventsPage() {
         JPanel page = new JPanel(new BorderLayout(0, 12));
         page.setOpaque(false);
@@ -432,6 +456,7 @@ public class AdminDashboardPanel extends JPanel {
         return page;
     }
 
+    /** Search, lifecycle, archive, and date-range controls for inventory. */
     private JPanel buildFilters() {
         ViewStyles.styleInput(searchField);
         ViewStyles.styleInput(dateFromFilter);
@@ -456,6 +481,7 @@ public class AdminDashboardPanel extends JPanel {
         return filters;
     }
 
+    /** Column labels aligned with each event's capacity/progress/status row. */
     private JPanel buildInventoryHeader() {
         JPanel header = new JPanel(new GridBagLayout());
         header.setBackground(new Color(0x17, 0x1B, 0x24));
@@ -473,6 +499,7 @@ public class AdminDashboardPanel extends JPanel {
         return header;
     }
 
+    // One event row contains capacity/sales metrics and its context action menu.
     private JPanel createInventoryRow(Event event) {
         JPanel row = new JPanel(new GridBagLayout());
         row.setBackground(new Color(0x17, 0x1B, 0x24));
@@ -524,6 +551,7 @@ public class AdminDashboardPanel extends JPanel {
         return row;
     }
 
+    // Event-specific operations stay grouped in a compact overflow menu.
     private JPanel buildRowActions(Event event) {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
         actions.setOpaque(false);
@@ -574,6 +602,7 @@ public class AdminDashboardPanel extends JPanel {
         };
     }
 
+    // Recomputes dashboard totals directly from the host's current events/bookings.
     private void updateSummary(List<Event> events) {
         int capacity = events.stream().filter(event -> !event.isArchived())
                 .flatMap(event -> event.getTicketTiers().stream())
@@ -589,6 +618,8 @@ public class AdminDashboardPanel extends JPanel {
         capacityHint.setText(events.stream().filter(event -> !event.isArchived()).count() + " active events");
     }
 
+    // Appearance preferences and signed-in host details.
+    /** Account details plus persistent global appearance and accent controls. */
     private JPanel buildSettingsPage(String name) {
         JPanel page = new JPanel(new BorderLayout());
         page.setOpaque(false);
@@ -599,13 +630,37 @@ public class AdminDashboardPanel extends JPanel {
         JLabel idLabel = new JLabel("Account ID: " + hostId);
         ViewStyles.styleSecondaryText(idLabel, 12f);
         settings.add(idLabel);
-        JLabel themeLabel = new JLabel("Appearance: Dark");
-        ViewStyles.styleSecondaryText(themeLabel, 12f);
-        settings.add(themeLabel);
+        settings.add(settingLabel("Appearance"));
+        JComboBox<String> appearance = new JComboBox<>(new String[] {"Dark", "Light"});
+        appearance.setSelectedItem(ThemeManager.isDarkMode() ? "Dark" : "Light");
+        appearance.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        appearance.addActionListener(action -> themeChange.accept("Dark".equals(appearance.getSelectedItem())));
+        settings.add(appearance);
+        settings.add(settingLabel("Accent color"));
+        JButton accent = new JButton("Choose interface accent");
+        accent.setBackground(ThemeManager.getAccentColor());
+        accent.setForeground(Color.WHITE);
+        accent.setOpaque(true);
+        accent.setAlignmentX(LEFT_ALIGNMENT);
+        accent.setMaximumSize(new Dimension(240, 40));
+        accent.addActionListener(action -> {
+            Color selected = JColorChooser.showDialog(this, "Choose interface accent", ThemeManager.getAccentColor());
+            if (selected != null) accentChange.accept(selected);
+        });
+        settings.add(accent);
         page.add(settings, BorderLayout.NORTH);
         return page;
     }
 
+    private JLabel settingLabel(String text) {
+        JLabel label = new JLabel(text);
+        ViewStyles.styleSecondaryText(label, 12f);
+        label.setAlignmentX(LEFT_ALIGNMENT);
+        label.setBorder(new EmptyBorder(6, 0, 2, 0));
+        return label;
+    }
+
+    /** Updates page copy, selected navigation styling, and the active CardLayout page. */
     private void showPage(String page) {
         activePage = page;
         String title = switch (page) {
@@ -732,6 +787,8 @@ public class AdminDashboardPanel extends JPanel {
         };
     }
 
+    // Event editor: identity/schedule first, then tiers and optional custom details.
+    /** Editor layout orders core event info, ticket tiers, custom details, and save actions. */
     private JPanel buildManagementForm() {
         styleInputs();
         JPanel form = new JPanel(new GridBagLayout());
@@ -805,6 +862,7 @@ public class AdminDashboardPanel extends JPanel {
         return field;
     }
 
+    /** Temporary host-defined key/value details copied into the event on save. */
     private JPanel buildCustomFields() {
         JPanel section = new JPanel(new BorderLayout(8, 8));
         section.setOpaque(false);
@@ -881,6 +939,7 @@ public class AdminDashboardPanel extends JPanel {
         }
     }
 
+    // Tier list operations support add, edit, remove, and sold-inventory protection.
     private JPanel buildTierManager() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setOpaque(false);
@@ -1002,6 +1061,7 @@ public class AdminDashboardPanel extends JPanel {
         }
     }
 
+    /** Adds or edits a temporary tier while protecting capacity and sold-ticket history. */
     private void addOrUpdateTier() {
         String name = tierNameField.getText().trim();
         double price = ((Number) priceSpinner.getValue()).doubleValue();
@@ -1052,6 +1112,7 @@ public class AdminDashboardPanel extends JPanel {
         tierActionButton.setText("Update Tier");
     }
 
+    /** Prevents removal of a ticket tier that already has booking records. */
     private void removeSelectedTier() {
         int selected = tierList.getSelectedIndex();
         if (selected >= 0) {
@@ -1078,6 +1139,7 @@ public class AdminDashboardPanel extends JPanel {
         tierActionButton.setText("Add Tier");
     }
 
+    /** Validates required inputs and persists the event aggregate through EventManager. */
     private void saveEvent() {
         clearValidation();
         String title = titleField.getText().trim();
@@ -1146,6 +1208,7 @@ public class AdminDashboardPanel extends JPanel {
                 JOptionPane.INFORMATION_MESSAGE);
     }
 
+    /** Copies an existing event into the editor without mutating it until save. */
     private void loadEvent(Event event) {
         editingEvent = event;
         titleField.setText(event.getTitle());
@@ -1173,6 +1236,7 @@ public class AdminDashboardPanel extends JPanel {
         showPage("Editor");
     }
 
+    /** Resets editor controls and validation marks for a new event. */
     private void startNewEvent() {
         editingEvent = null;
         titleField.setText("");
@@ -1197,6 +1261,7 @@ public class AdminDashboardPanel extends JPanel {
         showValidationError(message);
     }
 
+    /** Marks invalid fields in red and shows a matching inline form message. */
     private void showValidationError(String message, java.awt.Component... invalidFields) {
         validationLabel.setText(message);
         validationLabel.setVisible(true);
@@ -1223,10 +1288,12 @@ public class AdminDashboardPanel extends JPanel {
         tierList.setBorder(null);
     }
 
+    /** Converts the calendar widget's Date to the event model's local-date value. */
     private LocalDate toLocalDate(Date date) {
         return date == null ? null : date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
     }
 
+    /** Converts an event-model date back to a calendar widget value. */
     private Date toDate(LocalDate date) {
         return date == null ? null : Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
     }

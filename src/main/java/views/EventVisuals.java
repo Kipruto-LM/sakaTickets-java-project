@@ -16,6 +16,7 @@ import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 import models.Event;
 
+/** Loads bundled/event-selected images and paints rounded, cover-cropped photo panels. */
 final class EventVisuals {
     private static final BufferedImage HERO = loadResource("/images/featured-concert.jpg");
 
@@ -26,49 +27,67 @@ final class EventVisuals {
         return imagePanel(HERO, height, cornerRadius, 0.16f);
     }
 
+    /** Buyer choice crop uses the featured live-music hero image. */
     static JPanel buyerChoice(int height, int cornerRadius) {
         return imagePanel(HERO, height, cornerRadius, 0.08f);
     }
 
+    /** Host choice crop uses a conference/meetup image suited to event creators. */
     static JPanel hostChoice(int height, int cornerRadius) {
         return imagePanel(loadResource("/images/event-tech.jpg"), height, cornerRadius, 0.08f);
     }
 
+    /** Event category/banner artwork for compact fixed-layout controls. */
     static JPanel event(Event event, int height, int cornerRadius) {
         return imagePanel(loadEventImage(event), height, cornerRadius, 0.08f);
     }
 
     private static JPanel imagePanel(BufferedImage image, int height, int cornerRadius, float shade) {
-        JPanel panel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics graphics) {
-                super.paintComponent(graphics);
-                Graphics2D g = (Graphics2D) graphics.create();
-                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                RoundRectangle2D mask = new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(),
-                        cornerRadius, cornerRadius);
-                g.clip(mask);
-                if (image == null) {
-                    g.setPaint(new GradientPaint(0, 0, new Color(0x08, 0x67, 0x8C),
-                            getWidth(), getHeight(), new Color(0x16, 0x1A, 0x28)));
-                    g.fillRect(0, 0, getWidth(), getHeight());
-                } else {
-                    drawCover(g, image, getWidth(), getHeight());
-                }
-                g.setComposite(AlphaComposite.SrcOver.derive(shade));
-                g.setPaint(new GradientPaint(0, 0, new Color(0x0F, 0x11, 0x17, 220),
-                        getWidth(), 0, new Color(0x0F, 0x11, 0x17, 25)));
-                g.fillRect(0, 0, getWidth(), getHeight());
-                g.dispose();
-            }
-        };
+        CoverImagePanel panel = new CoverImagePanel(image, cornerRadius, shade);
         panel.setOpaque(false);
         panel.setPreferredSize(new Dimension(480, height));
         panel.setMinimumSize(new Dimension(180, height));
         return panel;
     }
 
+    /** Shared rounded cover surface that preserves visual proportions when parent layouts resize it. */
+    private static final class CoverImagePanel extends JPanel {
+        private final BufferedImage image;
+        private final int cornerRadius;
+        private final float shade;
+
+        private CoverImagePanel(BufferedImage image, int cornerRadius, float shade) {
+            this.image = image;
+            this.cornerRadius = cornerRadius;
+            this.shade = shade;
+        }
+
+        @Override
+        protected void paintComponent(Graphics graphics) {
+            super.paintComponent(graphics);
+            Graphics2D g = (Graphics2D) graphics.create();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            RoundRectangle2D mask = new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(),
+                    cornerRadius, cornerRadius);
+            g.clip(mask);
+            if (image == null) {
+                g.setPaint(new GradientPaint(0, 0, new Color(0x08, 0x67, 0x8C),
+                        getWidth(), getHeight(), new Color(0x16, 0x1A, 0x28)));
+                g.fillRect(0, 0, getWidth(), getHeight());
+            } else {
+                drawCover(g, image, getWidth(), getHeight());
+            }
+            g.setComposite(AlphaComposite.SrcOver.derive(shade));
+            Color wash = ViewStyles.BACKGROUND;
+            g.setPaint(new GradientPaint(0, 0, new Color(wash.getRed(), wash.getGreen(), wash.getBlue(), 180),
+                    getWidth(), 0, new Color(wash.getRed(), wash.getGreen(), wash.getBlue(), 18)));
+            g.fillRect(0, 0, getWidth(), getHeight());
+            g.dispose();
+        }
+    }
+
+    /** Scales an image to fill its panel while centering any crop. */
     private static void drawCover(Graphics2D g, BufferedImage image, int width, int height) {
         if (width <= 0 || height <= 0) return;
         double scale = Math.max(width / (double) image.getWidth(), height / (double) image.getHeight());
@@ -79,6 +98,7 @@ final class EventVisuals {
         g.drawImage(image, x, y, drawWidth, drawHeight, null);
     }
 
+    /** Prefers an event's chosen banner, then selects bundled art by category. */
     private static BufferedImage loadEventImage(Event event) {
         String customPath = event.getBannerImagePath();
         if (customPath != null && !customPath.isBlank()) {

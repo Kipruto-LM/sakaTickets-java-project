@@ -23,7 +23,9 @@ import models.Booking;
 import models.Event;
 import models.TicketTier;
 
+/** Guest checkout: event/tier selection, live totals, availability, and purchase confirmation. */
 public class CheckoutPanel extends JPanel {
+    // Shared order services and guest-entered checkout state.
     private final EventManager eventManager;
     private final OrderManager orderManager;
     private final Runnable returnToCatalog;
@@ -60,6 +62,7 @@ public class CheckoutPanel extends JPanel {
         buildView();
     }
 
+    /** Refreshes event details and the selectable ticket tiers before checkout. */
     public void setEvent(String eventId) {
         setEvent(eventManager.getEventById(eventId));
     }
@@ -94,6 +97,7 @@ public class CheckoutPanel extends JPanel {
         updateTierSelection();
     }
 
+    // Event artwork/details and purchase form are separate visual columns.
     private void buildView() {
         setLayout(new GridBagLayout());
         setBackground(ViewStyles.BACKGROUND);
@@ -252,12 +256,14 @@ public class CheckoutPanel extends JPanel {
         constraints.gridwidth = 1;
     }
 
+    /** Recalculates the subtotal whenever ticket tier or quantity changes. */
     private void updateTotal() {
         int quantity = (Integer) quantitySpinner.getValue();
         double total = selectedTier == null ? 0 : selectedTier.getPrice() * quantity;
         totalLabel.setText(String.format("Total: KSh %,.2f", total));
     }
 
+    /** Updates price, quantity bounds, and purchase availability for the selected tier. */
     private void updateTierSelection() {
         selectedTier = (TicketTier) tierSelector.getSelectedItem();
         if (selectedTier == null) {
@@ -280,6 +286,7 @@ public class CheckoutPanel extends JPanel {
         updateTotal();
     }
 
+    /** Deducts tier inventory, creates a booking, and hands the receipt to MainFrame. */
     private void submitBooking() {
         int quantity = (Integer) quantitySpinner.getValue();
         if (selectedEvent == null || selectedTier == null || nameField.getText().isBlank()
@@ -301,6 +308,7 @@ public class CheckoutPanel extends JPanel {
         bookingConfirmed.accept(booking);
     }
 
+    /** Clears guest-entered values after handing off the completed booking. */
     private void clearForm() {
         nameField.setText("");
         emailField.setText("");

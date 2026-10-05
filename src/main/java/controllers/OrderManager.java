@@ -5,7 +5,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/** Creates guest booking receipts and calculates event-level ticket/revenue analytics. */
 public class OrderManager {
+    // In-memory booking repository for this MVP.
     private List<Booking> allBookings;
 
     public OrderManager() {
@@ -14,10 +16,12 @@ public class OrderManager {
     }
 
     // Creates a new booking, generates a UUID, and saves it to the list
+    /** Legacy overload retained for callers that do not specify a ticket tier. */
     public Booking createBooking(String eventId, String customerName, String customerEmail, int quantity, double totalPrice) {
         return createBooking(eventId, customerName, customerEmail, "", quantity, totalPrice);
     }
 
+    /** Generates an eight-character receipt ID, stores the booking, and returns it. */
     public Booking createBooking(String eventId, String customerName, String customerEmail, String tierName,
             int quantity, double totalPrice) {
         // Generate a short, readable 8-character alphanumeric ticket ID
@@ -35,11 +39,13 @@ public class OrderManager {
     }
 
     // Retrieve all bookings (for the Admin dashboard)
+    /** Returns the current in-memory booking collection for reporting screens. */
     public List<Booking> getAllBookings() {
         return allBookings;
     }
 
     // Retrieve bookings for a specific event to check sales
+    /** Selects bookings for one event so attendee lists and analytics share one source. */
     public List<Booking> getBookingsByEvent(String eventId) {
         List<Booking> eventBookings = new ArrayList<>();
         for (Booking b : allBookings) {
@@ -50,6 +56,7 @@ public class OrderManager {
         return eventBookings;
     }
 
+    // Analytics are calculated from saved booking records so the dashboard stays current.
     public double calculateEventRevenue(String eventId) {
         return getBookingsByEvent(eventId).stream().mapToDouble(Booking::getTotalPrice).sum();
     }
