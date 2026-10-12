@@ -22,9 +22,7 @@ import javax.swing.ToolTipManager;         // Shows the little hover pop-up text
  * The family of chart classes:
  *   ChartPanel (abstract)
  *     |- ColumnChart        vertical bars, e.g. tickets sold per day
- *     |- LineChart          a running-total line, e.g. tickets sold so far
  *     |- HorizontalBarChart sideways bars, e.g. revenue per tier
- *     |- RingMeter          a ring showing one percentage
  *
  * OOP ideas shown here:
  * - Abstract class: you can't create a plain ChartPanel. It leaves three methods abstract

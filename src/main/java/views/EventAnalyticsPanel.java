@@ -17,7 +17,6 @@ import java.time.format.DateTimeParseException;         // Error thrown when tex
 import java.time.temporal.ChronoUnit;                   // Counts days between two dates
 import java.util.List;                                  // The general list type
 import java.util.Locale;                                // Language rules (English month names)
-import java.util.Map;                                   // The general map type
 import java.util.function.Consumer;                     // An object holding an action that takes one value
 import javax.swing.BorderFactory;                       // Helper for making borders
 import javax.swing.Box;                                 // Invisible spacers
@@ -42,17 +41,14 @@ import models.TicketTier;                               // A ticket price level
  *
  * Layout from top to bottom:
  *   1. Header       - back button, title, category/date/venue, status badge, Export and Edit buttons
- *   2. Five tiles   - tickets sold, revenue, average order, last 7 days, event date
- *   3. Two charts   - running total of tickets (line) + sell-through (ring)
- *   4. One chart    - tickets sold per day (columns)
- *   5. Three charts - seats by tier, revenue by tier, order size
- *   6. Table        - the 12 latest bookings
+ *   2. Four tiles   - tickets sold, revenue, last 7 days, event date
+ *   3. Two charts   - tickets sold per day (columns) + seats sold in each tier (bars)
+ *   4. Table        - the 12 latest bookings
  *
  * OOP ideas shown here:
  * - Inheritance: extends JPanel, so the dashboard can show it like any other page.
- * - Polymorphism: it builds several different chart objects (LineChart, ColumnChart,
- *   HorizontalBarChart, RingMeter) and places them all through the same card() method,
- *   which only needs to know each one is a JComponent.
+ * - Polymorphism: it builds two different chart objects (ColumnChart and HorizontalBarChart)
+ *   and places both through the same card() method, which only needs to know each one is a JComponent.
  * - MVC: all the numbers come from the OrderManager controller. This View only lays them out.
  * - Callbacks: the Edit, Export and Back buttons run actions handed in by the dashboard.
  */
@@ -100,12 +96,8 @@ public class EventAnalyticsPanel extends JPanel {
         content.removeAll();                                   // Clear the previous event
         addBlock(buildHeader(event));
         addBlock(buildStatTiles(event));
-        // Line chart gets 2.2 shares of the width, the ring gets 1.
-        addBlock(buildRow(new double[] {2.2, 1},
-                buildCumulativeCard(event), buildSellThroughCard(event)));
-        addBlock(buildDailyCard(event));
-        addBlock(buildRow(new double[] {1.2, 1.2, 1},
-                buildTierSeatsCard(event), buildTierRevenueCard(event), buildOrderSizeCard(event)));
+        // Two charts side by side: daily sales gets 1.6 shares of the width, seats by tier gets 1.
+        addBlock(buildRow(new double[] {1.6, 1}, buildDailyCard(event), buildTierSeatsCard(event)));
         addBlock(buildBookingsCard(event));
         content.revalidate();
         content.repaint();
@@ -188,54 +180,33 @@ public class EventAnalyticsPanel extends JPanel {
 
     // ---- Headline numbers ----
 
-    // The row of five stat tiles.
+    // The row of four stat tiles.
     private JPanel buildStatTiles(Event event) {
         String id = event.getEventId();
         int capacity = capacity(event);                                   // Total seats
         int sold = orderManager.calculateTotalTicketsSold(id);
         double revenue = orderManager.calculateEventRevenue(id);
         int bookings = orderManager.getBookingsByEvent(id).size();        // Number of separate purchases
-        // Money still to be made: seats left x price, added up across tiers.
-        double unsoldValue = event.getTicketTiers().stream()
-                .mapToDouble(tier -> tier.getAvailableSeats() * tier.getPrice()).sum();
-        // Split the last 14 days into the week before (days 0-6) and this week (days 7-13).
-        int[] lastFortnight = orderManager.getDailyTicketSales(id, 14);
-        int previousWeek = 0;
+        int percentSold = capacity == 0 ? 0 : sold * 100 / capacity;      // Whole-number percentage
+        // Tickets sold in the last 7 days: add up the 7 daily counts.
         int thisWeek = 0;
-        for (int i = 0; i < 14; i++) {
-            if (i < 7) previousWeek += lastFortnight[i]; else thisWeek += lastFortnight[i];
+        for (int count : orderManager.getDailyTicketSales(id, 7)) {
+            thisWeek += count;
         }
 
-        JPanel tiles = new JPanel(new GridLayout(1, 5, 12, 0));          // 1 row of 5 equal tiles
+        JPanel tiles = new JPanel(new GridLayout(1, 4, 12, 0));          // 1 row of 4 equal tiles
         tiles.setOpaque(false);
-        // Tile 1: tickets sold, with "of 120 seats · 30 left" underneath.
         tiles.add(statTile("Tickets sold", String.format("%,d", sold),
-                String.format("of %,d seats  ·  %,d left", capacity, Math.max(0, capacity - sold)), null));
-        // Tile 2: revenue so far, and how much is still on sale.
+                percentSold + "% of " + capacity + " seats sold"));
         tiles.add(statTile("Revenue", "KES " + ChartPanel.compact(revenue),
-                "KES " + ChartPanel.compact(unsoldValue) + " still on sale", null));
-        // Tile 3: average spend per booking ("–" if there are none, to avoid dividing by zero).
-        tiles.add(statTile("Average order", bookings == 0 ? "–" : "KES " + ChartPanel.compact(revenue / bookings),
-                bookings == 0 ? "No bookings yet" : String.format("%.1f tickets per booking", (double) sold / bookings),
-                null));
-        // Tile 4: this week vs last week, as a percentage change in green (up) or red (down).
-        String change;
-        Color changeColor = null;
-        if (previousWeek == 0) {
-            change = thisWeek == 0 ? "No sales in two weeks" : "New sales this week";
-        } else {
-            long percent = Math.round((thisWeek - previousWeek) * 100.0 / previousWeek);
-            change = (percent >= 0 ? "+" : "-") + Math.abs(percent) + "% vs previous 7 days";
-            changeColor = percent >= 0 ? GOOD : BAD;
-        }
-        tiles.add(statTile("Last 7 days", String.format("%,d tickets", thisWeek), change, changeColor));
-        // Tile 5: how long until the event, e.g. "In 3 days".
-        tiles.add(statTile("Event date", countdown(event.getDate()), longDate(event.getDate()), null));
+                "from " + bookings + " bookings"));
+        tiles.add(statTile("Last 7 days", thisWeek + " tickets", "booked this week"));
+        tiles.add(statTile("Event date", countdown(event.getDate()), longDate(event.getDate())));
         return tiles;
     }
 
-    // One stat tile: small caption, big number, small hint (optionally coloured).
-    private JPanel statTile(String label, String value, String hint, Color hintColor) {
+    // One stat tile: small caption, big number, small hint underneath.
+    private JPanel statTile(String label, String value, String hint) {
         JPanel tile = new JPanel(new GridLayout(3, 1, 0, 4));             // 3 rows
         tile.setBackground(CARD);
         tile.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(BORDER),
@@ -248,7 +219,6 @@ public class EventAnalyticsPanel extends JPanel {
         number.setFont(ViewStyles.BODY_FONT.deriveFont(Font.BOLD, 21f));
         JLabel note = new JLabel(hint);
         ViewStyles.styleSecondaryText(note, 11f);
-        if (hintColor != null) note.setForeground(hintColor);              // Only tile 4 uses a colour
         tile.add(caption);
         tile.add(number);
         tile.add(note);
@@ -256,38 +226,6 @@ public class EventAnalyticsPanel extends JPanel {
     }
 
     // ---- Charts ----
-
-    // Line chart: total tickets sold so far, day by day, with the capacity line on top.
-    private JPanel buildCumulativeCard(Event event) {
-        String id = event.getEventId();
-        int[] daily = orderManager.getDailyTicketSales(id, DAYS);
-        int inWindow = 0;
-        for (int count : daily) inWindow += count;                         // Tickets sold in the 30 days
-        // Tickets sold before the 30-day window started, so the line starts at the right height.
-        int running = orderManager.calculateTotalTicketsSold(id) - inWindow;
-        double[] totals = new double[DAYS];
-        for (int i = 0; i < DAYS; i++) {
-            running += daily[i];                                           // Add each day's sales
-            totals[i] = running;                                           // Running total so far
-        }
-        String[] labels = dayLabels(DAYS);
-        int capacity = capacity(event);
-        // A date label every 7 days, capacity reference line, 230px tall.
-        LineChart chart = new LineChart(totals, labels,
-                i -> String.format("%s: %,.0f sold in total (+%d that day)", labels[i], totals[i], daily[i]),
-                ChartPanel.SERIES[0], 7, capacity, String.format("Capacity %,d", capacity), 230);
-        return card("Tickets sold over time", "Running total for the last 30 days", chart);
-    }
-
-    // Ring: share of all seats that have been sold.
-    private JPanel buildSellThroughCard(Event event) {
-        int capacity = capacity(event);
-        int sold = orderManager.calculateTotalTicketsSold(event.getEventId());
-        double fraction = capacity == 0 ? 0 : (double) sold / capacity;
-        RingMeter ring = new RingMeter(fraction, "of seats sold",
-                String.format("%,d of %,d seats sold", sold, capacity), 230);
-        return card("Sell-through", String.format("%,d of %,d seats", sold, capacity), ring);
-    }
 
     // Columns: tickets sold on each of the last 30 days.
     private JPanel buildDailyCard(Event event) {
@@ -319,35 +257,6 @@ public class EventAnalyticsPanel extends JPanel {
                 i -> String.format("%s: %,.0f of %,.0f sold at KES %,.0f each", names[i], sold[i], capacity[i],
                         tiers.get(i).getPrice()));
         return card("Seats by tier", "Sold compared with each tier's capacity", chart);
-    }
-
-    // Bars: money taken by each tier.
-    private JPanel buildTierRevenueCard(Event event) {
-        Map<String, Double> revenue = orderManager.getRevenueByTier(event);
-        String[] names = revenue.keySet().toArray(String[]::new);                       // Tier names
-        double[] values = revenue.values().stream().mapToDouble(Double::doubleValue).toArray();   // Their revenue
-        double total = 0;
-        for (double value : values) total += value;
-        // Lambdas can only use variables that never change after being set, so copy total into a final one.
-        double finalTotal = total;
-        HorizontalBarChart chart = new HorizontalBarChart(names, values, null,
-                value -> "KES " + ChartPanel.compact(value),
-                i -> String.format("%s: KES %,.0f (%.0f%% of revenue)", names[i], values[i],
-                        finalTotal == 0 ? 0 : values[i] * 100 / finalTotal));
-        return card("Revenue by tier", "Where the money comes from", chart);
-    }
-
-    // Columns: how many bookings bought 1, 2, 3 or 4+ tickets.
-    private JPanel buildOrderSizeCard(Event event) {
-        int[] counts = orderManager.getOrderSizeCounts(event.getEventId());
-        double[] values = new double[counts.length];
-        for (int i = 0; i < counts.length; i++) values[i] = counts[i];
-        String[] labels = {"1", "2", "3", "4+"};
-        // labelEvery = 1 (show every label), labelEveryColumn = true (value on every column).
-        ColumnChart chart = new ColumnChart(values, labels,
-                i -> labels[i] + (i == 0 ? " ticket: " : " tickets: ") + counts[i] + " bookings",
-                ChartPanel.SERIES[0], 1, true, 150);
-        return card("Order size", "Bookings by number of tickets", chart);
     }
 
     // ---- Latest bookings table (the table view behind the charts) ----

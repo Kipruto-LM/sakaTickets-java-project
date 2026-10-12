@@ -8,10 +8,8 @@ import java.time.LocalDate;          // A date without a time
 import java.time.LocalDateTime;      // A date with a time
 import java.util.ArrayList;          // A resizable list
 import java.util.Comparator;         // Describes how to sort things
-import java.util.LinkedHashMap;      // A map that keeps insertion order
 import java.util.List;               // The general list type
 import java.util.Locale;             // Language rules for lower-casing
-import java.util.Map;                // The general map type
 import java.util.Random;             // Random numbers (for the sample sales)
 import java.util.UUID;               // Random unique IDs (for receipt codes)
 
@@ -166,30 +164,6 @@ public class OrderManager {
         return counts;
     }
 
-    // Revenue per tier name, in the event's tier order.
-    // e.g. {"Early Bird" -> 25200.0, "Regular" -> 84000.0, "VIP" -> 37500.0}
-    public Map<String, Double> getRevenueByTier(Event event) {
-        Map<String, Double> revenue = new LinkedHashMap<>();
-        // Start every tier at 0, so tiers with no sales still show up.
-        event.getTicketTiers().forEach(tier -> revenue.put(tier.getTierName(), 0.0));
-        for (Booking booking : getBookingsByEvent(event.getEventId())) {
-            // merge(): add this booking's total to whatever that tier already has.
-            revenue.merge(tierLabel(booking), booking.getTotalPrice(), Double::sum);
-        }
-        return revenue;
-    }
-
-    // How many bookings bought 1, 2, 3 or 4+ tickets at once.
-    // counts[0] = 1 ticket, counts[1] = 2 tickets, counts[2] = 3 tickets, counts[3] = 4 or more.
-    public int[] getOrderSizeCounts(String eventId) {
-        int[] counts = new int[4];
-        for (Booking booking : getBookingsByEvent(eventId)) {
-            // Clamp the quantity to 1-4, then subtract 1 to get the array position (0-3).
-            counts[Math.min(4, Math.max(1, booking.getQuantity())) - 1]++;
-        }
-        return counts;
-    }
-
     // The most recent bookings first, up to `limit` of them.
     public List<Booking> getRecentBookings(String eventId, int limit) {
         List<Booking> sorted = getBookingsByEvent(eventId);
@@ -200,10 +174,5 @@ public class OrderManager {
             result.add(sorted.get(i));
         }
         return result;
-    }
-
-    // The tier name to use for a booking, or "General" if it has none (older bookings).
-    private static String tierLabel(Booking booking) {
-        return booking.getTierName() == null || booking.getTierName().isBlank() ? "General" : booking.getTierName();
     }
 }
