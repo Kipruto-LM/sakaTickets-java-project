@@ -9,7 +9,7 @@ import java.awt.GridLayout;                 // Layout with equal-sized cells
 import java.awt.GridBagConstraints;         // Position/size rules for one item in a GridBagLayout
 import java.awt.GridBagLayout;              // A flexible grid layout (used for the forms)
 import java.awt.Insets;                     // Spacing around an item
-import java.io.IOException;                 // Error thrown if saving the account file fails
+import database.DatabaseException;          // Thrown if saving to the database fails
 import java.util.Optional;                  // A box that may or may not hold a User
 import java.util.function.Consumer;         // An object holding an action that takes one value
 import javax.swing.BorderFactory;           // Helper for making borders
@@ -268,7 +268,7 @@ public class AdminLoginPanel extends JPanel {
             clearRegistrationForm();
             registrationMessage.setText(" ");
             loginSuccess.accept(user);                          // New hosts go straight to their dashboard
-        } catch (IllegalArgumentException | IOException exception) {
+        } catch (IllegalArgumentException | DatabaseException exception) {
             // Either a rule was broken (e.g. "Enter a valid email address.") or saving failed:
             // show the exception's message under the form.
             registrationMessage.setText(exception.getMessage());

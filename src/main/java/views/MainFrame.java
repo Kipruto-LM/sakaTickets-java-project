@@ -4,6 +4,8 @@ package views;
 import controllers.EventManager;      // Holds all events
 import controllers.OrderManager;      // Holds all bookings and sales numbers
 import controllers.AccountManager;    // Holds host accounts and logins
+import database.Database;             // Opens the PostgreSQL connection
+import java.sql.Connection;           // An open link to the database
 import java.awt.CardLayout;           // Layout that shows one "card" (screen) at a time
 import javax.swing.JFrame;            // A desktop window
 import javax.swing.JPanel;            // A container for other components
@@ -55,8 +57,10 @@ public class MainFrame extends JFrame {
     // Constructor: builds every screen and shows the welcome page.
     public MainFrame() {
         // The controllers (the C in MVC) are created once and shared by every screen.
+        // Open the PostgreSQL connection once and share it with every controller (dependency injection).
+        Connection connection = Database.connect();
+        accountManager = new AccountManager(connection);
         eventManager = new EventManager();
-        accountManager = new AccountManager();
         orderManager = new OrderManager();
         // Fill the sample events with realistic past sales.
         orderManager.seedSampleSales(eventManager.getEvents());
