@@ -164,70 +164,93 @@ public class WelcomePanel extends JPanel {
         return brand;
     }
 
+    // Builds one choice card (picture on top, words and a button underneath).
+    // It is called twice, once for "Attend" and once for "Create", so the card code is written
+    // only once and reused with different values - this is code reuse through method parameters.
+    //   index           - small label such as "01 / ATTEND"
+    //   title           - big heading; "\n" marks where the line should break
+    //   description     - one sentence under the heading
+    //   buttonText      - the words on the button
+    //   image           - the picture panel made by EventVisuals
+    //   buttonColor     - button background colour
+    //   buttonTextColor - button text colour
+    //   action          - the callback to run when the button is clicked
     private JPanel buildChoice(String index, String title, String description, String buttonText,
             JPanel image, Color buttonColor, Color buttonTextColor, Runnable action) {
-        JPanel choice = new JPanel(new BorderLayout(0, 0));
-        choice.setBackground(new Color(0x17, 0x1B, 0x24));
+        JPanel choice = new JPanel(new BorderLayout(0, 0));       // The card itself
+        choice.setBackground(new Color(0x17, 0x1B, 0x24));        // Slightly lighter than the page
+        // Thin outline around the card, plus padding inside it.
         choice.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(0x2A, 0x30, 0x44)),
                 new EmptyBorder(9, 9, 12, 9)));
-        choice.putClientProperty("FlatLaf.style", "arc: 12");
-        choice.add(image, BorderLayout.NORTH);
+        choice.putClientProperty("FlatLaf.style", "arc: 12");     // Asks the FlatLaf theme for rounded corners
+        choice.add(image, BorderLayout.NORTH);                    // Picture across the top of the card
 
+        // "copy" is the text area under the picture: words in the middle, button at the bottom.
         JPanel copy = new JPanel(new BorderLayout(0, 10));
         copy.setOpaque(false);
         copy.setBorder(new EmptyBorder(15, 10, 2, 8));
+
+        // "words" stacks the three pieces of text vertically.
         JPanel words = new JPanel();
         words.setOpaque(false);
         words.setLayout(new BoxLayout(words, BoxLayout.Y_AXIS));
-        JLabel eyebrow = new JLabel(index);
-        eyebrow.setForeground(new Color(0x00, 0xB4, 0xFF));
-        eyebrow.setFont(ViewStyles.DATA_FONT.deriveFont(java.awt.Font.BOLD, 10f));
+        JLabel eyebrow = new JLabel(index);                                   // e.g. "01 / ATTEND"
+        eyebrow.setForeground(new Color(0x00, 0xB4, 0xFF));                   // Light blue
+        eyebrow.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 10f));
+        // JLabel can't show "\n" line breaks, but it understands HTML, so "\n" becomes "<br>".
         JLabel heading = new JLabel("<html>" + title.replace("\n", "<br>") + "</html>");
         ViewStyles.styleHeading(heading, 21f);
+        // Wrapping text in <html> also lets a long sentence wrap onto a second line.
         JLabel explanation = new JLabel("<html>" + description + "</html>");
         ViewStyles.styleSecondaryText(explanation, 13f);
         words.add(eyebrow);
-        words.add(javax.swing.Box.createVerticalStrut(7));
+        words.add(Box.createVerticalStrut(7));                                // 7px gap
         words.add(heading);
-        words.add(javax.swing.Box.createVerticalStrut(6));
+        words.add(Box.createVerticalStrut(6));                                // 6px gap
         words.add(explanation);
 
+        // The button. Its colours come from the parameters, so each card can look different.
         JButton choose = new JButton(buttonText);
-        choose.setFont(ViewStyles.BODY_FONT.deriveFont(java.awt.Font.BOLD, 13f));
-        choose.setForeground(buttonTextColor);
-        choose.setBackground(buttonColor);
-        choose.setOpaque(true);
-        choose.setFocusPainted(false);
-        choose.setBorder(BorderFactory.createEmptyBorder(11, 16, 11, 16));
-        choose.setPreferredSize(new Dimension(184, 44));
-        choose.setMinimumSize(new Dimension(150, 44));
+        choose.setFont(ViewStyles.BODY_FONT.deriveFont(Font.BOLD, 13f));
+        choose.setForeground(buttonTextColor);                    // Text colour
+        choose.setBackground(buttonColor);                        // Fill colour
+        choose.setOpaque(true);                                   // Actually paint the fill colour
+        choose.setFocusPainted(false);                            // No dotted focus box after clicking
+        choose.setBorder(BorderFactory.createEmptyBorder(11, 16, 11, 16)); // Padding inside the button
+        choose.setPreferredSize(new Dimension(184, 44));          // Ideal size
+        choose.setMinimumSize(new Dimension(150, 44));            // Never squeeze smaller than this
+        // Show the pointing-hand cursor when the mouse is over the button.
         choose.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        // Callback: when clicked, run the action MainFrame gave us. "event ->" is a lambda,
+        // a short way to write a tiny method that Swing calls on each click.
         choose.addActionListener(event -> action.run());
 
+        // A FlowLayout row keeps the button at its own size, on the left, instead of stretching.
         JPanel actionRow = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0));
         actionRow.setOpaque(false);
         actionRow.add(choose);
-        copy.add(words, BorderLayout.CENTER);
-        copy.add(actionRow, BorderLayout.SOUTH);
-        choice.add(copy, BorderLayout.CENTER);
-        choice.setPreferredSize(new Dimension(520, 438));
-        choice.setMinimumSize(new Dimension(300, 360));
+        copy.add(words, BorderLayout.CENTER);                     // Text fills the middle
+        copy.add(actionRow, BorderLayout.SOUTH);                  // Button sits at the bottom
+        choice.add(copy, BorderLayout.CENTER);                    // Text area under the picture
+        choice.setPreferredSize(new Dimension(520, 438));         // Ideal card size
+        choice.setMinimumSize(new Dimension(300, 360));           // Smallest allowed card size
         return choice;
     }
 
+    // Builds the footer: one short line on the left, one on the right, in small muted text.
     private JPanel buildFooter() {
         JPanel footer = new JPanel(new BorderLayout());
         footer.setOpaque(false);
-        footer.setBorder(new EmptyBorder(12, 1, 0, 1));
+        footer.setBorder(new EmptyBorder(12, 1, 0, 1));                       // 12px space above the text
         JLabel left = new JLabel("MADE FOR NAIROBI NIGHTS, DAYS AND EVERYTHING BETWEEN");
-        left.setForeground(new Color(0x6F, 0x7E, 0x99));
-        left.setFont(ViewStyles.DATA_FONT.deriveFont(9f));
+        left.setForeground(new Color(0x6F, 0x7E, 0x99));                      // Muted grey-blue
+        left.setFont(ViewStyles.DATA_FONT.deriveFont(9f));                    // Small monospace text
         JLabel right = new JLabel("DISCOVER  ·  GATHER  ·  CREATE");
         right.setForeground(new Color(0x6F, 0x7E, 0x99));
         right.setFont(ViewStyles.DATA_FONT.deriveFont(9f));
-        footer.add(left, BorderLayout.WEST);
-        footer.add(right, BorderLayout.EAST);
+        footer.add(left, BorderLayout.WEST);                                  // Left side
+        footer.add(right, BorderLayout.EAST);                                 // Right side
         return footer;
     }
 }
