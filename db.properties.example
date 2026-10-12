@@ -1,0 +1,9 @@
+# Copy this file to "db.properties" (in the same folder) and fill in your own details.
+# db.properties is listed in .gitignore, so your password is never committed.
+#
+# url      = jdbc:postgresql://<host>:<port>/<database name>
+# user     = the Postgres login (role) name
+# password = that login's password
+url=jdbc:postgresql://localhost:5432/sakatickets
+user=saka
+password=change-me
