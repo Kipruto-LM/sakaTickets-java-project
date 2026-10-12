@@ -7,9 +7,21 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import models.Event;
 
+/**
+ * Controller that owns the list of all events.
+ *
+ * OOP ideas shown here:
+ * - MVC: this is a "Controller". Screens ask it for events instead of keeping their own lists,
+ *   so there is a single source of truth.
+ * - Encapsulation of a collection: getEvents() returns a read-only view, so other classes can
+ *   look at the list but must use addEvent()/updateEvent() to change it.
+ * - Objects working together: the manager creates {@link Event} objects and calls their
+ *   methods (setCategory, setArchived, ...) instead of editing their data directly.
+ */
 public class EventManager {
     private final List<Event> events;
 
+    // Constructor: fills the catalogue with sample events when the app starts.
     public EventManager() {
         events = new ArrayList<>();
         events.add(new Event("EVT-001", "Nairobi Tech Meetup", "2026-10-15",
@@ -36,11 +48,13 @@ public class EventManager {
         events.forEach(event -> event.setHostId("admin-001"));
     }
 
+    // Private helper: only used inside this class while setting up the sample events.
     private void assignArtwork(Event event, String category, String imagePath) {
         event.setCategory(category);
         event.setBannerImagePath(imagePath);
     }
 
+    // Read-only view: callers can't add or remove events through this list.
     public List<Event> getEvents() {
         return Collections.unmodifiableList(events);
     }
@@ -60,6 +74,7 @@ public class EventManager {
                 .collect(Collectors.toUnmodifiableList());
     }
 
+    // Only events that are not archived, for the guest catalogue.
     public List<Event> getPublicEvents() {
         return events.stream().filter(event -> !event.isArchived()).collect(Collectors.toUnmodifiableList());
     }
@@ -75,6 +90,8 @@ public class EventManager {
         throw new IllegalArgumentException("Event not found: " + updatedEvent.getEventId());
     }
 
+    // Builds a brand-new Event (and new TicketTier objects) from an existing one.
+    // New objects are made instead of sharing the old ones, so changing the copy never affects the original.
     public Event duplicateEvent(String eventId, String hostId) {
         Event source = getEventById(eventId);
         if (source == null) {

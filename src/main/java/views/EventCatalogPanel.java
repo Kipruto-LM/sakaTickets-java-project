@@ -19,6 +19,16 @@ import javax.swing.border.EmptyBorder;
 import models.Event;
 import models.TicketTier;
 
+/**
+ * The guest-facing list of upcoming events, shown as cards.
+ *
+ * OOP ideas shown here:
+ * - Inheritance: extends JPanel.
+ * - MVC: this is a View. It reads events from the EventManager (Controller) and only displays them.
+ * - Callbacks: when "Buy" is clicked, it passes the event ID to checkoutAction
+ *   (a Consumer<String>), and MainFrame decides what happens next.
+ * - Nested class: RoundedCardPanel at the bottom is a small JPanel subclass used only here.
+ */
 public class EventCatalogPanel extends JPanel {
     private final EventManager eventManager;
     private final Consumer<String> checkoutAction;
@@ -63,6 +73,7 @@ public class EventCatalogPanel extends JPanel {
         add(scrollPane, BorderLayout.CENTER);
     }
 
+    // Public method other classes can call to rebuild the cards after the data changes.
     public void refreshEvents() {
         eventList.removeAll();
         for (Event event : eventManager.getPublicEvents()) {
@@ -166,6 +177,8 @@ public class EventCatalogPanel extends JPanel {
         return card;
     }
 
+    // Private static nested class: a JPanel with rounded corners. It overrides paintComponent()
+    // to change how the parent class draws itself (inheritance + method overriding).
     private static class RoundedCardPanel extends JPanel {
         private RoundedCardPanel() {
             setOpaque(false);

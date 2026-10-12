@@ -5,6 +5,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Controller that records ticket purchases ({@link Booking} objects) and works out sales figures.
+ *
+ * OOP ideas shown here:
+ * - MVC: the checkout screen calls createBooking(), and the admin dashboard calls the
+ *   calculate methods. Neither screen does this work itself.
+ * - Method overloading: there are two createBooking() methods. The shorter one fills in an
+ *   empty tier name and calls the longer one.
+ * - Objects creating objects: createBooking() is the one place where new Booking objects are made.
+ */
 public class OrderManager {
     private List<Booking> allBookings;
 
@@ -18,6 +28,7 @@ public class OrderManager {
         return createBooking(eventId, customerName, customerEmail, "", quantity, totalPrice);
     }
 
+    // Full version: builds the Booking object, stores it, and returns it to the caller.
     public Booking createBooking(String eventId, String customerName, String customerEmail, String tierName,
             int quantity, double totalPrice) {
         // Generate a short, readable 8-character alphanumeric ticket ID
@@ -50,6 +61,7 @@ public class OrderManager {
         return eventBookings;
     }
 
+    // Total money taken for one event: adds up getTotalPrice() from each of its bookings.
     public double calculateEventRevenue(String eventId) {
         return getBookingsByEvent(eventId).stream().mapToDouble(Booking::getTotalPrice).sum();
     }

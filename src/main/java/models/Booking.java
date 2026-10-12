@@ -1,6 +1,17 @@
 package models;
 
+/**
+ * A Booking is one guest's purchase, much like a receipt.
+ *
+ * OOP ideas shown here:
+ * - Class vs object: this class is the blueprint. Every purchase creates a new Booking object.
+ * - Encapsulation: all fields are private. Other classes read and change them only
+ *   through the public getters and setters below.
+ * - Constructor overloading: there are several constructors with different parameters,
+ *   so a Booking can be built in more than one way.
+ */
 public class Booking {
+    // Fields (attributes): the data each Booking object holds.
     private String bookingId;
     private String eventId;       // Links this booking to a specific event
     private String customerName;  // Captured during guest checkout
@@ -9,13 +20,17 @@ public class Booking {
     private int quantity;
     private double totalPrice;
 
+    // Empty (default) constructor: creates a blank Booking that can be filled in later with setters.
     public Booking() {
     }
 
+    // Overloaded constructor without a tier name. "this(...)" passes the work on to the
+    // full constructor below, so the setup code is written only once.
     public Booking(String bookingId, String eventId, String customerName, String customerEmail, int quantity, double totalPrice) {
         this(bookingId, eventId, customerName, customerEmail, "", quantity, totalPrice);
     }
 
+    // Full constructor. "this.field = parameter" copies each value into this object's own field.
     public Booking(String bookingId, String eventId, String customerName, String customerEmail, String tierName,
             int quantity, double totalPrice) {
         this.bookingId = bookingId;
@@ -27,6 +42,7 @@ public class Booking {
         this.totalPrice = totalPrice;
     }
 
+    // Getters and setters: the public "doors" into the private fields (encapsulation).
     public String getBookingId() {
         return bookingId;
     }

@@ -23,6 +23,17 @@ import models.Booking;
 import models.Event;
 import models.TicketTier;
 
+/**
+ * Screen where a guest picks a ticket tier and quantity, enters their details and pays.
+ *
+ * OOP ideas shown here:
+ * - Inheritance: extends JPanel.
+ * - MVC: the View collects the input, the Event model checks and takes the seats,
+ *   and the OrderManager controller records the Booking.
+ * - Constructor and method overloading: two constructors and two setEvent() methods
+ *   (one takes an ID, the other an Event object).
+ * - Composition: the panel's own state is the event and tier currently selected.
+ */
 public class CheckoutPanel extends JPanel {
     private final EventManager eventManager;
     private final OrderManager orderManager;
@@ -43,6 +54,7 @@ public class CheckoutPanel extends JPanel {
     private Event selectedEvent;
     private TicketTier selectedTier;
 
+    // Shorter constructor: supplies a default "booking confirmed" action and calls the full one.
     public CheckoutPanel(EventManager eventManager, OrderManager orderManager, Runnable returnToCatalog) {
         this(eventManager, orderManager, returnToCatalog, booking -> {
             JOptionPane.showMessageDialog(null, "Purchase confirmed. Receipt: " + booking.getBookingId(),
@@ -60,6 +72,7 @@ public class CheckoutPanel extends JPanel {
         buildView();
     }
 
+    // Overloaded setEvent(): looks up the Event by ID, then calls the version below.
     public void setEvent(String eventId) {
         setEvent(eventManager.getEventById(eventId));
     }
@@ -280,6 +293,8 @@ public class CheckoutPanel extends JPanel {
         updateTotal();
     }
 
+    // The objects work together here: the Event takes the seats (its own rule), then
+    // the OrderManager creates the Booking, then the callback shows the receipt.
     private void submitBooking() {
         int quantity = (Integer) quantitySpinner.getValue();
         if (selectedEvent == null || selectedTier == null || nameField.getText().isBlank()

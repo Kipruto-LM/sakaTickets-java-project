@@ -16,12 +16,23 @@ import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 import models.Event;
 
+/**
+ * Builds the image panels (event pictures and banners) shown across the app.
+ *
+ * OOP ideas shown here:
+ * - Utility class: a final class with a private constructor and only static methods.
+ * - Anonymous inner class: imagePanel() creates a JPanel subclass on the spot and
+ *   overrides paintComponent() to draw a picture with rounded corners.
+ * - Abstraction: screens just ask for EventVisuals.event(...) and get a finished panel back,
+ *   without knowing how the image is loaded or scaled.
+ */
 final class EventVisuals {
     private static final BufferedImage HERO = loadResource("/images/featured-concert.jpg");
 
     private EventVisuals() {
     }
 
+    // The public helpers below all reuse the same private imagePanel() method.
     static JPanel hero(int height, int cornerRadius) {
         return imagePanel(HERO, height, cornerRadius, 0.16f);
     }
@@ -39,6 +50,8 @@ final class EventVisuals {
     }
 
     private static JPanel imagePanel(BufferedImage image, int height, int cornerRadius, float shade) {
+        // Anonymous subclass of JPanel. @Override replaces the parent's paintComponent()
+        // with our own drawing code (polymorphism: Swing calls OUR version when it repaints).
         JPanel panel = new JPanel() {
             @Override
             protected void paintComponent(Graphics graphics) {

@@ -7,6 +7,17 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
 
+/**
+ * Shared colours, fonts and styling helpers used by every screen.
+ *
+ * OOP ideas shown here:
+ * - Utility class: everything is static, so you call ViewStyles.stylePrimaryButton(button)
+ *   without creating an object.
+ * - "final" class and private constructor: nobody can extend it or create a ViewStyles object.
+ * - Reuse (DRY - Don't Repeat Yourself): the styling lives in one place, so changing a colour
+ *   here updates the whole app.
+ * - No access modifier ("package-private"): only classes in the views package can use it.
+ */
 final class ViewStyles {
     static final Color BACKGROUND = new Color(0x12, 0x12, 0x12);
     static final Color SURFACE = new Color(0x1E, 0x1E, 0x1E);
@@ -19,6 +30,7 @@ final class ViewStyles {
     static final Font BODY_FONT = new Font("Ubuntu Sans", Font.PLAIN, 14);
     static final Font DATA_FONT = new Font("Ubuntu Mono", Font.PLAIN, 12);
 
+    // Private constructor: stops anyone from writing "new ViewStyles()".
     private ViewStyles() {
     }
 

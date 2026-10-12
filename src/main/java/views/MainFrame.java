@@ -9,7 +9,20 @@ import javax.swing.JPanel;
 import models.Booking;
 import models.User;
 
+/**
+ * The main application window. It holds every screen and switches between them.
+ *
+ * OOP ideas shown here:
+ * - Inheritance ("is-a"): MainFrame extends JFrame, so it IS a window. It gets methods like
+ *   setTitle() and setSize() for free from its parent class.
+ * - Composition: the window HAS the three controllers and all the screen panels as fields.
+ * - Dependency injection: the controllers are created once here and passed into each screen's
+ *   constructor, so every screen shares the same data.
+ * - Callbacks: screens get small actions (like this::showCatalog) to ask the window to change
+ *   page. The screens never need to know about MainFrame itself (loose coupling).
+ */
 public class MainFrame extends JFrame {
+    // Names of the pages ("cards") that the CardLayout can show.
     private static final String WELCOME = "Welcome";
     private static final String CATALOG = "catalog";
     private static final String CHECKOUT = "checkout";
@@ -17,6 +30,7 @@ public class MainFrame extends JFrame {
     private static final String ADMIN_DASHBOARD = "AdminDashboard";
     private static final String TICKET_SUMMARY = "TicketSummary";
 
+    // CardLayout stacks the screens like a deck of cards and shows one at a time.
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel cardPanel = new JPanel(cardLayout);
     private final EventManager eventManager;
@@ -28,10 +42,13 @@ public class MainFrame extends JFrame {
     private AdminDashboardPanel adminDashboardPanel;
 
     public MainFrame() {
+        // The controllers (the C in MVC) are created once and shared by every screen.
         eventManager = new EventManager();
         accountManager = new AccountManager();
         orderManager = new OrderManager();
 
+        // Each screen object gets the controllers it needs, plus callbacks for moving between pages.
+        // "this::showCheckout" is a method reference: it passes our method in as an object.
         catalogPanel = new EventCatalogPanel(eventManager, this::showCheckout,
             () -> showCard(WELCOME));
         checkoutPanel = new CheckoutPanel(eventManager, orderManager, this::showCatalog, this::showTicketSummary);
@@ -46,6 +63,7 @@ public class MainFrame extends JFrame {
         cardPanel.add(ticketSummaryPanel, TICKET_SUMMARY);
         cardPanel.add(adminLoginPanel, ADMIN_LOGIN);
 
+        // These methods are inherited from JFrame.
         setTitle("SakaTickets");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setContentPane(cardPanel);
@@ -65,6 +83,7 @@ public class MainFrame extends JFrame {
         showCard(CATALOG);
     }
 
+    // A new dashboard object is made for each login, so it shows the signed-in host's own events.
     private void showAdminDashboard(User user) {
         if (adminDashboardPanel != null) {
             cardPanel.remove(adminDashboardPanel);

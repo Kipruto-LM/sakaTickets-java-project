@@ -22,6 +22,16 @@ import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 import models.User;
 
+/**
+ * Sign-in and sign-up screen for event hosts.
+ *
+ * OOP ideas shown here:
+ * - Inheritance: extends JPanel.
+ * - MVC: the View passes the username and password to the AccountManager (Controller) and
+ *   never handles password hashing itself.
+ * - Callbacks: on a successful login, the logged-in User object goes to loginSuccess
+ *   (a Consumer<User>). MainFrame then opens that host's dashboard.
+ */
 public class AdminLoginPanel extends JPanel {
     private final AccountManager accountManager;
     private final Consumer<User> loginSuccess;
@@ -202,6 +212,7 @@ public class AdminLoginPanel extends JPanel {
         }
     }
 
+    // Asks the controller to check the login. Optional<User> holds a User only when the login works.
     private void authenticate() {
         char[] password = loginPassword.getPassword();
         try {
@@ -219,6 +230,7 @@ public class AdminLoginPanel extends JPanel {
         }
     }
 
+    // Asks the controller to create an account. Errors come back as exceptions with friendly messages.
     private void register() {
         char[] password = passwordField.getPassword();
         char[] confirmation = confirmPasswordField.getPassword();

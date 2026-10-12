@@ -12,6 +12,15 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
+/**
+ * The first screen: guests choose "Browse events" and hosts choose "Start hosting".
+ *
+ * OOP ideas shown here:
+ * - Inheritance: WelcomePanel extends JPanel, so it IS a panel that can be shown in the window.
+ * - Callbacks with Runnable: the constructor receives two actions from MainFrame. The panel just
+ *   runs them when a button is clicked. It doesn't need to know which screen comes next.
+ * - Private helper methods split building the screen into small, readable parts.
+ */
 public class WelcomePanel extends JPanel {
     public WelcomePanel(Runnable browseEvents, Runnable hostEventAction) {
         setLayout(new BorderLayout(0, 24));

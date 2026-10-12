@@ -50,13 +50,28 @@ import com.toedter.calendar.JDateChooser;
 import models.Event;
 import models.TicketTier;
 
+/**
+ * The host's workspace: sales stats, the event list, and the form for creating or editing events.
+ *
+ * OOP ideas shown here:
+ * - Inheritance: extends JPanel.
+ * - MVC: this View works with Event and TicketTier objects (Model), and gets and saves them
+ *   through EventManager and OrderManager (Controllers).
+ * - Encapsulation: the screen's state (form fields, the event being edited, the active page)
+ *   is in private fields. Only refreshEvents() is public.
+ * - Abstraction by splitting work up: the screen is built from many small private
+ *   build...() methods, each making one part of the page.
+ * - Records and anonymous classes are used near the bottom of the file (CustomField, the table model).
+ */
 public class AdminDashboardPanel extends JPanel {
     private static final String[] EVENT_STATUSES = {"ON_SALE", "PAUSED", "CANCELLED", "SOLD_OUT"};
 
+    // Dependencies passed in through the constructor (dependency injection).
     private final EventManager eventManager;
     private final OrderManager orderManager;
     private final Runnable logoutAction;
     private final String hostId;
+    // UI components: kept as fields so every method in this class can reach them.
     private final JPanel eventList = new JPanel();
     private final JPanel eventState = new JPanel(new java.awt.CardLayout());
     private final java.awt.CardLayout pageLayout = new java.awt.CardLayout();
@@ -99,8 +114,10 @@ public class AdminDashboardPanel extends JPanel {
             new String[] {"All statuses", "ON_SALE", "PAUSED", "SOLD_OUT", "CANCELLED"});
         private final JCheckBox archivedToggle = new JCheckBox("Show archived");
         private Color selectedAccent = ViewStyles.ACCENT;
+    // The event currently open in the form, or null when creating a new one.
     private Event editingEvent;
 
+    // Static helper: it doesn't use any fields, so it belongs to the class, not to an object.
     private static JDateChooser createDateChooser() {
         JDateChooser chooser = new JDateChooser();
         chooser.setDateFormatString("yyyy-MM-dd");
@@ -109,6 +126,7 @@ public class AdminDashboardPanel extends JPanel {
         return chooser;
     }
 
+    // Constructor: stores the dependencies, then builds the screen.
     public AdminDashboardPanel(EventManager eventManager, OrderManager orderManager, Runnable logoutAction,
             String hostId, String hostName) {
         this.eventManager = eventManager;
@@ -119,6 +137,7 @@ public class AdminDashboardPanel extends JPanel {
         refreshEvents();
     }
 
+    // The only public method: rebuilds the event list using the current search and filters.
     public void refreshEvents() {
         eventList.removeAll();
         List<Event> allEvents = eventManager.getEventsByHostId(hostId);
@@ -661,6 +680,7 @@ public class AdminDashboardPanel extends JPanel {
     }
 
     private void showAttendees(Event event) {
+        // Anonymous subclass: overrides isCellEditable() so the attendee table is read-only.
         DefaultTableModel model = new DefaultTableModel(
                 new Object[] {"Receipt", "Guest", "Email", "Tier", "Qty", "Total (KES)"}, 0) {
             @Override
@@ -1078,6 +1098,8 @@ public class AdminDashboardPanel extends JPanel {
         tierActionButton.setText("Add Tier");
     }
 
+    // Checks the form, then either updates the Event being edited or creates a new one,
+    // and hands it to the EventManager.
     private void saveEvent() {
         clearValidation();
         String title = titleField.getText().trim();
@@ -1146,6 +1168,7 @@ public class AdminDashboardPanel extends JPanel {
                 JOptionPane.INFORMATION_MESSAGE);
     }
 
+    // The reverse of saveEvent(): copies an Event object's data into the form fields using its getters.
     private void loadEvent(Event event) {
         editingEvent = event;
         titleField.setText(event.getTitle());
@@ -1231,6 +1254,8 @@ public class AdminDashboardPanel extends JPanel {
         return date == null ? null : Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
     }
 
+    // A record is a short way to write a small, unchangeable data class. Java writes the
+    // constructor and getters for us. toString() is overridden so the list shows "name: value".
     private record CustomField(String name, String value) {
         @Override
         public String toString() {

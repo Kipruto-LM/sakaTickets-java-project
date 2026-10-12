@@ -16,6 +16,15 @@ import javax.swing.border.EmptyBorder;
 import models.Booking;
 import models.Event;
 
+/**
+ * The receipt screen shown after a successful purchase.
+ *
+ * OOP ideas shown here:
+ * - Inheritance: extends JPanel.
+ * - MVC: a View that only displays data. setBooking() reads from a Booking object (Model)
+ *   and asks the EventManager for that booking's Event.
+ * - Fields as UI state: the labels are created once, and setBooking() just updates their text.
+ */
 public class TicketSummaryPanel extends JPanel {
     private final EventManager eventManager;
     private final Runnable backToEvents;
@@ -35,6 +44,7 @@ public class TicketSummaryPanel extends JPanel {
         buildView();
     }
 
+    // Fills the receipt from a Booking object, using its getters (encapsulation).
     public void setBooking(Booking booking) {
         Event event = eventManager.getEventById(booking.getEventId());
         hero.removeAll();

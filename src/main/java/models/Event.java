@@ -6,11 +6,24 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * An Event is something guests can buy tickets for, such as a concert or an expo.
+ *
+ * OOP ideas shown here:
+ * - Composition ("has-a"): an Event HAS a list of {@link TicketTier} objects. It does not
+ *   track seats itself. Each tier looks after its own seats.
+ * - Encapsulation: fields are private, and some setters check or clean the value first
+ *   (for example, setCategory falls back to "General" when the input is empty).
+ * - Behaviour inside the object: purchase() and canPurchaseOn() keep the sales rules
+ *   with the data they apply to, so no other class has to repeat them.
+ */
 public class Event {
+    // Fields: the state of one event object.
     private String eventId;
     private String title;
     private String date;
     private String venue;
+    // Composition: the event is made up of ticket tier objects (Regular, VIP, ...).
     private List<TicketTier> ticketTiers = new ArrayList<>();
     private String status = "ON_SALE";
     private String hostId;
@@ -22,9 +35,11 @@ public class Event {
     private Map<String, String> customDetails = new LinkedHashMap<>();
     private boolean archived;
 
+    // Default constructor: an empty event that is filled in through setters.
     public Event() {
     }
 
+    // Main constructor: builds a complete event in one step.
     public Event(String eventId, String title, String date, String venue, List<TicketTier> ticketTiers,
             String status, String hostId) {
         this.eventId = eventId;
@@ -36,11 +51,14 @@ public class Event {
         this.hostId = hostId;
     }
 
+    // Overloaded constructor: a shortcut for an event with a single "Regular" tier.
+    // It creates that TicketTier object and passes it to the main constructor with this(...).
     public Event(String eventId, String title, String date, String venue, int availableSeats, double ticketPrice) {
         this(eventId, title, date, venue,
                 List.of(new TicketTier("Regular", ticketPrice, availableSeats)), "ON_SALE", "");
     }
 
+    // Getters and setters (encapsulation): the only way other classes reach the fields.
     public String getEventId() {
         return eventId;
     }
@@ -77,6 +95,7 @@ public class Event {
         return ticketTiers;
     }
 
+    // Copies the list it is given, so later changes to the caller's list don't affect this event.
     public void setTicketTiers(List<TicketTier> ticketTiers) {
         this.ticketTiers = ticketTiers == null ? new ArrayList<>() : new ArrayList<>(ticketTiers);
     }
@@ -95,6 +114,7 @@ public class Event {
     public void setBannerImagePath(String bannerImagePath) { this.bannerImagePath = bannerImagePath == null ? "" : bannerImagePath.trim(); }
     public String getAccentColorHex() { return accentColorHex; }
     public void setAccentColorHex(String accentColorHex) { this.accentColorHex = accentColorHex; }
+    // Returns a copy, so callers can read the details but can't change this event's map directly.
     public Map<String, String> getCustomDetails() { return new LinkedHashMap<>(customDetails); }
     public void setCustomDetails(Map<String, String> customDetails) {
         this.customDetails = customDetails == null ? new LinkedHashMap<>() : new LinkedHashMap<>(customDetails);
@@ -102,12 +122,16 @@ public class Event {
     public boolean isArchived() { return archived; }
     public void setArchived(boolean archived) { this.archived = archived; }
 
+    // Business rule kept inside the object: tickets can be bought only while the event is
+    // ON_SALE and the date falls inside the sales window.
     public boolean canPurchaseOn(LocalDate date) {
         return "ON_SALE".equals(status)
                 && (salesStartDate == null || !date.isBefore(salesStartDate))
                 && (salesEndDate == null || !date.isAfter(salesEndDate));
     }
 
+    // Delegation: the event finds the right tier and lets that TicketTier object take the seats.
+    // When every tier is empty, the event marks itself SOLD_OUT.
     public boolean purchase(String tierName, int quantity) {
         if (!canPurchaseOn(LocalDate.now()) || tierName == null) {
             return false;
@@ -123,10 +147,12 @@ public class Event {
         return false;
     }
 
+    // Derived value: worked out from the tiers each time it is asked for, rather than stored.
     public int getAvailableSeats() {
         return ticketTiers.stream().mapToInt(TicketTier::getAvailableSeats).sum();
     }
 
+    // Older single-price methods, kept so earlier code still works. They use the first tier.
     public double getTicketPrice() {
         return ticketTiers.isEmpty() ? 0.0 : ticketTiers.get(0).getPrice();
     }
