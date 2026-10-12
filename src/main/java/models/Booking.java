@@ -1,5 +1,7 @@
 package models;
 
+import java.time.LocalDateTime;
+
 /**
  * A Booking is one guest's purchase, much like a receipt.
  *
@@ -19,6 +21,8 @@ public class Booking {
     private String tierName;
     private int quantity;
     private double totalPrice;
+    // When the guest bought the tickets. Used for the sales-over-time charts.
+    private LocalDateTime purchasedAt = LocalDateTime.now();
 
     // Empty (default) constructor: creates a blank Booking that can be filled in later with setters.
     public Booking() {
@@ -93,4 +97,7 @@ public class Booking {
     public void setTotalPrice(double totalPrice) {
         this.totalPrice = totalPrice;
     }
+
+    public LocalDateTime getPurchasedAt() { return purchasedAt; }
+    public void setPurchasedAt(LocalDateTime purchasedAt) { this.purchasedAt = purchasedAt; }
 }
