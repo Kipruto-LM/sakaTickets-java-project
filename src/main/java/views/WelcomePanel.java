@@ -3,6 +3,7 @@ package views;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.GridLayout;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -26,17 +27,16 @@ public class WelcomePanel extends JPanel {
         setLayout(new BorderLayout(0, 24));
         setBackground(new Color(0x0F, 0x11, 0x17));
         setBorder(new EmptyBorder(25, 38, 28, 38));
-        add(buildHeader(), BorderLayout.NORTH);
 
         JPanel content = new JPanel();
         content.setOpaque(false);
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        JPanel introduction = buildIntroduction();
-        introduction.setAlignmentX(LEFT_ALIGNMENT);
-        introduction.setMaximumSize(new Dimension(Integer.MAX_VALUE,
-            introduction.getPreferredSize().height));
-        content.add(introduction);
-        content.add(Box.createVerticalStrut(22));
+        // The big, centred SakaTickets brand sits at the top of the page.
+        JPanel brand = buildBrand();
+        brand.setAlignmentX(LEFT_ALIGNMENT);
+        brand.setMaximumSize(new Dimension(Integer.MAX_VALUE, brand.getPreferredSize().height));
+        content.add(brand);
+        content.add(Box.createVerticalStrut(26));
         JPanel choices = new JPanel(new GridLayout(1, 2, 18, 0));
         choices.setOpaque(false);
         choices.add(buildChoice("01   /   ATTEND", "Find your people.\nFind your next thing.",
@@ -57,47 +57,52 @@ public class WelcomePanel extends JPanel {
         add(content, BorderLayout.CENTER);
     }
 
-    private JPanel buildHeader() {
-        JPanel header = new JPanel(new BorderLayout());
-        header.setOpaque(false);
-        JPanel identity = new JPanel(new GridLayout(2, 1, 0, 2));
-        identity.setOpaque(false);
-        JLabel name = new JLabel("SakaTickets");
-        name.setFont(ViewStyles.DISPLAY_FONT.deriveFont(java.awt.Font.BOLD, 22f));
-        name.setForeground(Color.WHITE);
-        JLabel descriptor = new JLabel("NAIROBI  ·  LIVE EVENTS");
-        descriptor.setForeground(new Color(0x00, 0xB4, 0xFF));
-        descriptor.setFont(ViewStyles.DATA_FONT.deriveFont(java.awt.Font.BOLD, 9f));
-        identity.add(name);
-        identity.add(descriptor);
-        header.add(identity, BorderLayout.WEST);
-        JLabel location = new JLabel("KENYA   /   01°17′S  36°49′E");
-        location.setForeground(new Color(0x88, 0x96, 0xB3));
-        location.setFont(ViewStyles.DATA_FONT.deriveFont(10f));
-        header.add(location, BorderLayout.EAST);
-        return header;
-    }
+    // Builds the centred brand block: a small line on top, the large "SakaTickets" name,
+    // a short accent bar under it, and the tagline below.
+    private JPanel buildBrand() {
+        JPanel brand = new JPanel();
+        brand.setOpaque(false);
+        brand.setLayout(new BoxLayout(brand, BoxLayout.Y_AXIS));
 
-    private JPanel buildIntroduction() {
-        JPanel introduction = new JPanel(new BorderLayout(0, 8));
-        introduction.setOpaque(false);
-        JLabel eyebrow = new JLabel("GOOD THINGS HAPPEN HERE");
+        JLabel eyebrow = new JLabel("NAIROBI  ·  LIVE EVENTS");
         eyebrow.setForeground(new Color(0x00, 0xE5, 0xC4));
-        eyebrow.setFont(ViewStyles.DATA_FONT.deriveFont(java.awt.Font.BOLD, 10f));
-        JLabel heading = new JLabel("Good things happen when you show up.");
-        ViewStyles.styleHeading(heading, 33f);
+        eyebrow.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 12f));
+
+        // Swing labels understand simple HTML, so we can colour "Saka" and "Tickets" differently.
+        JLabel name = new JLabel("<html><span style='color:#FFFFFF'>Saka</span>"
+                + "<span style='color:#0D6EFD'>Tickets</span></html>");
+        name.setFont(ViewStyles.DISPLAY_FONT.deriveFont(Font.BOLD, 72f));
+        // HTML labels try to stretch across the whole width; keeping them at their own size lets them centre.
+        name.setMaximumSize(name.getPreferredSize());
+
+        // A short blue bar under the name, like an underline.
+        JPanel accentBar = new JPanel();
+        accentBar.setBackground(ViewStyles.ACCENT);
+        accentBar.setPreferredSize(new Dimension(96, 5));
+        accentBar.setMaximumSize(new Dimension(96, 5));
+
+        JLabel tagline = new JLabel("Good things happen when you show up.");
+        ViewStyles.styleHeading(tagline, 24f);
         JLabel description = new JLabel("Discover Nairobi events, book tickets, or bring your own idea to life.");
         ViewStyles.styleSecondaryText(description, 15f);
-        JPanel copy = new JPanel();
-        copy.setOpaque(false);
-        copy.setLayout(new BoxLayout(copy, BoxLayout.Y_AXIS));
-        copy.add(eyebrow);
-        copy.add(javax.swing.Box.createVerticalStrut(8));
-        copy.add(heading);
-        copy.add(javax.swing.Box.createVerticalStrut(4));
-        copy.add(description);
-        introduction.add(copy, BorderLayout.WEST);
-        return introduction;
+
+        // CENTER_ALIGNMENT lines every piece up down the middle of the page.
+        eyebrow.setAlignmentX(CENTER_ALIGNMENT);
+        name.setAlignmentX(CENTER_ALIGNMENT);
+        accentBar.setAlignmentX(CENTER_ALIGNMENT);
+        tagline.setAlignmentX(CENTER_ALIGNMENT);
+        description.setAlignmentX(CENTER_ALIGNMENT);
+
+        brand.add(eyebrow);
+        brand.add(Box.createVerticalStrut(6));
+        brand.add(name);
+        brand.add(Box.createVerticalStrut(12));
+        brand.add(accentBar);
+        brand.add(Box.createVerticalStrut(18));
+        brand.add(tagline);
+        brand.add(Box.createVerticalStrut(6));
+        brand.add(description);
+        return brand;
     }
 
     private JPanel buildChoice(String index, String title, String description, String buttonText,
