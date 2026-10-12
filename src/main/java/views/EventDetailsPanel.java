@@ -2,19 +2,15 @@
 package views;
 
 import controllers.OrderManager;                    // Gives us the sales numbers
-import java.awt.BasicStroke;                        // Line thickness for drawing
 import java.awt.BorderLayout;                       // Layout with NORTH/SOUTH/EAST/WEST/CENTER areas
 import java.awt.Color;                              // An RGB colour
 import java.awt.Dimension;                          // A width and height
 import java.awt.FlowLayout;                         // Layout that places items in a row
 import java.awt.Font;                               // Font style constants
-import java.awt.Graphics;                           // The basic drawing "pen"
-import java.awt.Graphics2D;                         // A more powerful drawing pen
 import java.awt.GridBagConstraints;                 // Position/size rules for one item in a GridBagLayout
 import java.awt.GridBagLayout;                      // A flexible grid layout
 import java.awt.GridLayout;                         // Layout with equal-sized cells
 import java.awt.Insets;                             // Spacing around an item
-import java.awt.RenderingHints;                     // Drawing quality settings
 import java.time.LocalDate;                         // A date without a time
 import java.time.format.DateTimeFormatter;          // Turns dates into text like "Saturday 24 October 2026"
 import java.time.format.DateTimeParseException;     // Error thrown when text isn't a valid date
@@ -28,6 +24,7 @@ import javax.swing.JButton;                         // A clickable button
 import javax.swing.JComponent;                      // The parent class of all Swing components
 import javax.swing.JLabel;                          // A piece of text
 import javax.swing.JPanel;                          // A container
+import javax.swing.JProgressBar;                    // A bar that fills up
 import javax.swing.JScrollPane;                     // Adds scroll bars
 import javax.swing.border.EmptyBorder;              // Invisible padding
 import models.Event;                                // The event being shown
@@ -49,7 +46,6 @@ import models.TicketTier;                           // A ticket price level
  *   guest-friendly data (tickets per day, never revenue).
  * - Callbacks: choosing a tier calls bookAction (a BiConsumer of event + tier name), and
  *   MainFrame opens checkout with that tier already selected.
- * - Nested class: AvailabilityBar overrides paintComponent() to draw a slim meter.
  */
 public class EventDetailsPanel extends JPanel {
     // Colours used on this page.
@@ -357,7 +353,12 @@ public class EventDetailsPanel extends JPanel {
         price.setForeground(ChartPanel.TEXT);
         price.setFont(ViewStyles.BODY_FONT.deriveFont(Font.BOLD, 20f));
         middle.add(price, BorderLayout.NORTH);
-        middle.add(new AvailabilityBar(leftShare), BorderLayout.CENTER);   // Our nested class (see bottom)
+        // A progress bar showing how many seats are left (0 to 100%).
+        JProgressBar bar = new JProgressBar(0, 100);
+        bar.setValue((int) (leftShare * 100));
+        bar.setPreferredSize(new Dimension(160, 6));
+        bar.setForeground(leftShare <= 0.15 ? WARNING : ChartPanel.SERIES[0]);   // Amber when nearly gone
+        middle.add(bar, BorderLayout.CENTER);
         JLabel seats = new JLabel(left == 0 ? "No seats left" : String.format("%,d of %,d seats left", left, capacity));
         ViewStyles.styleSecondaryText(seats, 11f);
         middle.add(seats, BorderLayout.SOUTH);
@@ -396,40 +397,6 @@ public class EventDetailsPanel extends JPanel {
             return LocalDate.parse(date).format(LONG_DATE);
         } catch (DateTimeParseException exception) {
             return date;
-        }
-    }
-
-    /**
-     * A slim meter showing the share of seats still available. The track is a dark step of
-     * the same blue, so the meter reads as one object.
-     *
-     * OOP idea: a private nested subclass of JPanel that overrides paintComponent().
-     */
-    private static class AvailabilityBar extends JPanel {
-        private final double fraction;     // Share of seats left, 0.0 to 1.0
-
-        // Constructor: keeps the value between 0 and 1, and sets a slim size.
-        AvailabilityBar(double fraction) {
-            this.fraction = Math.max(0, Math.min(1, fraction));
-            setOpaque(false);
-            setPreferredSize(new Dimension(160, 8));
-        }
-
-        // Draws the dark track, then the filled part on top.
-        @Override
-        protected void paintComponent(Graphics graphics) {
-            Graphics2D g = (Graphics2D) graphics.create();
-            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            int height = 6;                                     // Bar thickness
-            int y = (getHeight() - height) / 2;                 // Centre it vertically
-            g.setColor(new Color(0x10, 0x42, 0x81));            // Dark blue track
-            g.fillRoundRect(0, y, getWidth(), height, height, height);
-            // Amber when 15% or fewer seats are left, otherwise blue.
-            g.setColor(fraction <= 0.15 ? WARNING : ChartPanel.SERIES[0]);
-            g.setStroke(new BasicStroke(1f));
-            int width = (int) Math.round(getWidth() * fraction);
-            if (width > 0) g.fillRoundRect(0, y, Math.max(width, height), height, height, height);
-            g.dispose();
         }
     }
 }

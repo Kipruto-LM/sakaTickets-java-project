@@ -27,9 +27,7 @@ import javax.swing.JLabel;                              // A piece of text
 import javax.swing.JPanel;                              // A container
 import javax.swing.JScrollPane;                         // Adds scroll bars
 import javax.swing.JTable;                              // A table with rows and columns
-import javax.swing.SwingConstants;                      // Alignment constants such as RIGHT
 import javax.swing.border.EmptyBorder;                  // Invisible padding
-import javax.swing.table.DefaultTableCellRenderer;      // Controls how table cells look
 import javax.swing.table.DefaultTableModel;             // Holds a table's data
 import models.Booking;                                  // One purchase
 import models.Event;                                    // The event being analysed
@@ -261,12 +259,9 @@ public class EventAnalyticsPanel extends JPanel {
 
     private JPanel buildBookingsCard(Event event) {
         List<Booking> recent = orderManager.getRecentBookings(event.getEventId(), 12);   // Newest 12
-        // The table's data. An anonymous subclass overrides isCellEditable() so nobody can type in cells.
+        // The table's column titles, and 0 rows to start with.
         DefaultTableModel model = new DefaultTableModel(
-                new Object[] {"Receipt", "Guest", "Tier", "Qty", "Total (KES)", "Purchased"}, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) { return false; }
-        };
+                new Object[] {"Receipt", "Guest", "Tier", "Qty", "Total (KES)", "Purchased"}, 0);
         // One table row per booking.
         for (Booking booking : recent) {
             model.addRow(new Object[] {booking.getBookingId(), booking.getCustomerName(), booking.getTierName(),
@@ -304,11 +299,7 @@ public class EventAnalyticsPanel extends JPanel {
         table.getTableHeader().setForeground(ChartPanel.MUTED);
         table.getTableHeader().setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 10f));
         table.getTableHeader().setReorderingAllowed(false); // Columns can't be dragged around
-        // Numbers are right-aligned so their digits line up.
-        DefaultTableCellRenderer right = new DefaultTableCellRenderer();
-        right.setHorizontalAlignment(SwingConstants.RIGHT);
-        table.getColumnModel().getColumn(3).setCellRenderer(right);    // Qty
-        table.getColumnModel().getColumn(4).setCellRenderer(right);    // Total
+        table.setDefaultEditor(Object.class, null);         // Turn off editing: the table is read-only
     }
 
     // ---- Layout helpers ----

@@ -13,10 +13,9 @@ import java.awt.GridBagConstraints;           // Position/size rules for one ite
 import java.awt.GridBagLayout;                // A flexible grid layout
 import java.awt.GridLayout;                   // Layout with equal-sized cells
 import java.awt.Insets;                       // Spacing around an item
+import java.io.File;                          // A file on disk
+import java.io.FileWriter;                    // Writes text into a file
 import java.io.IOException;                   // Error thrown when writing a file fails
-import java.io.Writer;                        // Something we can write text into (a file here)
-import java.nio.charset.StandardCharsets;     // Text encodings such as UTF-8
-import java.nio.file.Files;                   // Helpers for reading and writing files
 import java.util.List;                        // The general list type
 import java.util.Locale;                      // Language rules for lower-casing
 import java.util.function.Consumer;           // An object holding an action that takes one value
@@ -53,7 +52,6 @@ import models.TicketTier;                     // A ticket price level
  * - Single responsibility: this class only lists events and runs the row actions.
  * - Callbacks: Edit, Insights and "Create" are handed in as actions (Consumer / Runnable), so this
  *   page never needs to know about the editor or insights classes.
- * - Anonymous class: the attendee table's model overrides isCellEditable() to make it read-only.
  */
 class EventListPage extends JPanel {
     // Column titles, and the share of the row's width each column gets (they add up to 1).
@@ -297,17 +295,16 @@ class EventListPage extends JPanel {
 
     // Pops up a read-only table of everyone who booked this event.
     private void showAttendees(Event event) {
-        // Anonymous subclass of DefaultTableModel: isCellEditable() always says no.
+        // The table's column titles, and 0 rows to start with.
         DefaultTableModel model = new DefaultTableModel(
-                new Object[] {"Receipt", "Guest", "Email", "Tier", "Qty", "Total (KES)"}, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) { return false; }
-        };
+                new Object[] {"Receipt", "Guest", "Email", "Tier", "Qty", "Total (KES)"}, 0);
         for (Booking booking : orderManager.getBookingsByEvent(event.getEventId())) {
             model.addRow(new Object[] {booking.getBookingId(), booking.getCustomerName(), booking.getCustomerEmail(),
                 booking.getTierName(), booking.getQuantity(), booking.getTotalPrice()});
         }
-        JScrollPane scroll = new JScrollPane(new JTable(model));
+        JTable table = new JTable(model);
+        table.setDefaultEditor(Object.class, null);         // Turn off editing: the table is read-only
+        JScrollPane scroll = new JScrollPane(table);
         scroll.setPreferredSize(new Dimension(780, 330));
         JOptionPane.showMessageDialog(this, scroll, event.getTitle() + " attendees", JOptionPane.PLAIN_MESSAGE);
     }
@@ -316,19 +313,19 @@ class EventListPage extends JPanel {
     // Package-private so the insights page's "Export CSV" button can use it too.
     void exportAttendees(Event event) {
         JFileChooser chooser = new JFileChooser();
-        // Suggest a file name made from the title (anything unusual becomes "_").
-        chooser.setSelectedFile(new java.io.File(event.getTitle().replaceAll("[^A-Za-z0-9_-]", "_") + "-attendees.csv"));
+        chooser.setSelectedFile(new File(event.getTitle() + " attendees.csv"));   // Suggested file name
         if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
             return;                                                         // The host cancelled
         }
-        // try-with-resources: the file is closed automatically when we're done.
-        try (Writer writer = Files.newBufferedWriter(chooser.getSelectedFile().toPath(), StandardCharsets.UTF_8)) {
+        try {
+            FileWriter writer = new FileWriter(chooser.getSelectedFile());       // Opens (or creates) the file
             writer.write("Receipt,Guest,Email,Tier,Quantity,Total KES\n");   // Header line
             for (Booking booking : orderManager.getBookingsByEvent(event.getEventId())) {
                 writer.write(csv(booking.getBookingId()) + "," + csv(booking.getCustomerName()) + ","
                         + csv(booking.getCustomerEmail()) + "," + csv(booking.getTierName()) + ","
                         + booking.getQuantity() + "," + booking.getTotalPrice() + "\n");
             }
+            writer.close();                                                  // Finish writing the file
             JOptionPane.showMessageDialog(this, "Attendee CSV exported.", "Export complete",
                     JOptionPane.INFORMATION_MESSAGE);
         } catch (IOException exception) {

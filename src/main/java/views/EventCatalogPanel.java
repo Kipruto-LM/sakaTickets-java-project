@@ -32,7 +32,6 @@ import models.Event;                        // The event model
  * - Callbacks: when "Book Now" is clicked, it passes the event ID to checkoutAction
  *   (a Consumer<String>), and MainFrame decides what happens next. "View details" does the
  *   same with detailsAction.
- * - Nested class: RoundedCardPanel at the bottom is a small JPanel subclass used only here.
  */
 public class EventCatalogPanel extends JPanel {
     private final EventManager eventManager;          // Source of the events to show
@@ -105,7 +104,7 @@ public class EventCatalogPanel extends JPanel {
 
     // Builds one event card.
     private JPanel createEventCard(Event event, Consumer<String> checkoutAction) {
-        JPanel card = new RoundedCardPanel();                      // Our rounded-corner panel (see bottom)
+        JPanel card = new JPanel();
         card.setLayout(new BorderLayout(0, 9));
         card.setBackground(new Color(0x17, 0x1B, 0x24));
         card.setBorder(BorderFactory.createCompoundBorder(
@@ -212,26 +211,5 @@ public class EventCatalogPanel extends JPanel {
         card.add(info, BorderLayout.CENTER);
 
         return card;
-    }
-
-    // Private static nested class: a JPanel with rounded corners. It overrides paintComponent()
-    // to change how the parent class draws itself (inheritance + method overriding).
-    private static class RoundedCardPanel extends JPanel {
-        // Constructor: transparent, so only our rounded shape gets painted.
-        private RoundedCardPanel() {
-            setOpaque(false);
-        }
-
-        // Fills a rounded rectangle in the background colour, then lets JPanel draw the children.
-        @Override
-        protected void paintComponent(java.awt.Graphics graphics) {
-            java.awt.Graphics2D graphics2D = (java.awt.Graphics2D) graphics.create();
-            graphics2D.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
-                    java.awt.RenderingHints.VALUE_ANTIALIAS_ON);                  // Smooth corners
-            graphics2D.setColor(getBackground());
-            graphics2D.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);     // 30 = corner roundness
-            graphics2D.dispose();
-            super.paintComponent(graphics);
-        }
     }
 }
