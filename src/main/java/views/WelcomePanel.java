@@ -84,29 +84,34 @@ public class WelcomePanel extends JPanel {
 
     // Builds the slim header bar: a small "SakaTickets" with "NAIROBI · LIVE EVENTS" under it
     // on the left, and the city's location on the right.
+    // Returns a new JPanel; the constructor places it in the NORTH (top) area.
     private JPanel buildHeader() {
-        JPanel header = new JPanel(new BorderLayout());
-        header.setOpaque(false);
-        // A dividing line under the header separates it from the big brand below.
+        JPanel header = new JPanel(new BorderLayout());   // WEST = logo, EAST = location
+        header.setOpaque(false);                           // Transparent background
+        // A compound border joins two borders: a 1px line along the bottom (the divider)
+        // plus 14px of padding above that line.
         header.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(0x2A, 0x30, 0x44)),
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(0x2A, 0x30, 0x44)), // top, left, bottom, right
                 new EmptyBorder(0, 0, 14, 0)));
+
+        // "identity" stacks the small logo text and the line under it: 2 rows, 1 column.
         JPanel identity = new JPanel(new GridLayout(2, 1, 0, 2));
         identity.setOpaque(false);
-        JLabel name = new JLabel("SakaTickets");
-        name.setFont(ViewStyles.DISPLAY_FONT.deriveFont(Font.BOLD, 18f));
-        name.setForeground(Color.WHITE);
-        JLabel descriptor = new JLabel("NAIROBI  ·  LIVE EVENTS");
-        descriptor.setForeground(new Color(0x00, 0xB4, 0xFF));
+        JLabel name = new JLabel("SakaTickets");                           // Small logo text
+        name.setFont(ViewStyles.DISPLAY_FONT.deriveFont(Font.BOLD, 18f));  // deriveFont = same font, new style/size
+        name.setForeground(Color.WHITE);                                   // Text colour
+        JLabel descriptor = new JLabel("NAIROBI  ·  LIVE EVENTS");         // Line under the logo
+        descriptor.setForeground(new Color(0x00, 0xB4, 0xFF));             // Light blue
         descriptor.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 9f));
-        identity.add(name);
-        identity.add(descriptor);
-        header.add(identity, BorderLayout.WEST);
-        JLabel location = new JLabel("KENYA   /   01°17'S  36°49'E");
-        location.setForeground(new Color(0x88, 0x96, 0xB3));
+        identity.add(name);                                                // Row 1
+        identity.add(descriptor);                                          // Row 2
+        header.add(identity, BorderLayout.WEST);                           // Left side of the header
+
+        JLabel location = new JLabel("KENYA   /   01°17'S  36°49'E");     // Nairobi's map coordinates
+        location.setForeground(new Color(0x88, 0x96, 0xB3));               // Muted grey-blue
         location.setFont(ViewStyles.DATA_FONT.deriveFont(10f));
-        header.add(location, BorderLayout.EAST);
-        return header;
+        header.add(location, BorderLayout.EAST);                           // Right side of the header
+        return header;                                                     // Hand the finished panel back
     }
 
     // Builds the centred brand block: a small line on top, the large "SakaTickets" name,
@@ -114,29 +119,30 @@ public class WelcomePanel extends JPanel {
     private JPanel buildBrand() {
         JPanel brand = new JPanel();
         brand.setOpaque(false);
-        brand.setLayout(new BoxLayout(brand, BoxLayout.Y_AXIS));
+        brand.setLayout(new BoxLayout(brand, BoxLayout.Y_AXIS));           // Stack the pieces vertically
 
+        // Small teal line above the name (designers call this an "eyebrow").
         JLabel eyebrow = new JLabel("GOOD THINGS HAPPEN HERE");
-        eyebrow.setForeground(new Color(0x00, 0xE5, 0xC4));
+        eyebrow.setForeground(new Color(0x00, 0xE5, 0xC4));                // Teal
         eyebrow.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 12f));
 
         // Swing labels understand simple HTML, so we can colour "Saka" and "Tickets" differently.
-        JLabel name = new JLabel("<html><span style='color:#FFFFFF'>Saka</span>"
-                + "<span style='color:#0D6EFD'>Tickets</span></html>");
-        name.setFont(ViewStyles.DISPLAY_FONT.deriveFont(Font.BOLD, 72f));
+        JLabel name = new JLabel("<html><span style='color:#FFFFFF'>Saka</span>"   // "Saka" in white
+                + "<span style='color:#0D6EFD'>Tickets</span></html>");            // "Tickets" in brand blue
+        name.setFont(ViewStyles.DISPLAY_FONT.deriveFont(Font.BOLD, 72f));          // Very large and bold
         // HTML labels try to stretch across the whole width; keeping them at their own size lets them centre.
         name.setMaximumSize(name.getPreferredSize());
 
         // A short blue bar under the name, like an underline.
-        JPanel accentBar = new JPanel();
-        accentBar.setBackground(ViewStyles.ACCENT);
-        accentBar.setPreferredSize(new Dimension(96, 5));
-        accentBar.setMaximumSize(new Dimension(96, 5));
+        JPanel accentBar = new JPanel();                    // An empty panel is just a coloured rectangle
+        accentBar.setBackground(ViewStyles.ACCENT);         // Brand blue
+        accentBar.setPreferredSize(new Dimension(96, 5));   // 96px wide, 5px tall
+        accentBar.setMaximumSize(new Dimension(96, 5));     // Stops BoxLayout stretching it wider
 
         JLabel tagline = new JLabel("Good things happen when you show up.");
-        ViewStyles.styleHeading(tagline, 24f);
+        ViewStyles.styleHeading(tagline, 24f);              // Shared heading style from ViewStyles
         JLabel description = new JLabel("Discover Nairobi events, book tickets, or bring your own idea to life.");
-        ViewStyles.styleSecondaryText(description, 15f);
+        ViewStyles.styleSecondaryText(description, 15f);    // Shared grey text style
 
         // CENTER_ALIGNMENT lines every piece up down the middle of the page.
         eyebrow.setAlignmentX(CENTER_ALIGNMENT);
@@ -145,6 +151,7 @@ public class WelcomePanel extends JPanel {
         tagline.setAlignmentX(CENTER_ALIGNMENT);
         description.setAlignmentX(CENTER_ALIGNMENT);
 
+        // Add everything top to bottom. Each "strut" is a fixed gap in pixels.
         brand.add(eyebrow);
         brand.add(Box.createVerticalStrut(6));
         brand.add(name);
