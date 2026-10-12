@@ -834,6 +834,7 @@ public class AdminDashboardPanel extends JPanel {
         return button;
     }
 
+    // Pops up a window with a table of everyone who booked this event.
     private void showAttendees(Event event) {
         // Anonymous subclass: overrides isCellEditable() so the attendee table is read-only.
         DefaultTableModel model = new DefaultTableModel(
@@ -841,28 +842,35 @@ public class AdminDashboardPanel extends JPanel {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
         };
+        // One table row per booking.
         orderManager.getBookingsByEvent(event.getEventId()).forEach(booking -> model.addRow(new Object[] {
             booking.getBookingId(), booking.getCustomerName(), booking.getCustomerEmail(),
             booking.getTierName(), booking.getQuantity(), booking.getTotalPrice()
         }));
         JTable table = new JTable(model);
-        table.setFillsViewportHeight(true);
+        table.setFillsViewportHeight(true);  // Table background fills the whole scroll area
         JScrollPane scroll = new JScrollPane(table);
         scroll.setPreferredSize(new Dimension(780, 330));
+        // A message box can show any component - here, the scrolling table.
         JOptionPane.showMessageDialog(this, scroll, event.getTitle() + " attendees",
                 JOptionPane.PLAIN_MESSAGE);
     }
 
+    // Saves this event's bookings to a CSV file (opens in Excel or Google Sheets).
     private void exportAttendees(Event event) {
         JFileChooser chooser = new JFileChooser();
+        // Suggest a file name from the title, swapping anything that isn't a letter, digit, _ or - for "_".
         chooser.setSelectedFile(new java.io.File(event.getTitle().replaceAll("[^A-Za-z0-9_-]", "_") + "-attendees.csv"));
-        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {  // The host clicked Cancel
             return;
         }
+        // try-with-resources: the file is closed automatically, even if an error happens.
+        // "var" lets Java work out the variable's type itself.
         try (var writer = Files.newBufferedWriter(chooser.getSelectedFile().toPath(), StandardCharsets.UTF_8)) {
-            writer.write("Receipt,Guest,Email,Tier,Quantity,Total KES");
+            writer.write("Receipt,Guest,Email,Tier,Quantity,Total KES");  // Header line
             writer.newLine();
             for (var booking : orderManager.getBookingsByEvent(event.getEventId())) {
+                // One line per booking, values separated by commas.
                 writer.write(String.join(",", csv(booking.getBookingId()), csv(booking.getCustomerName()),
                         csv(booking.getCustomerEmail()), csv(booking.getTierName()),
                         csv(Integer.toString(booking.getQuantity())), csv(Double.toString(booking.getTotalPrice()))));
@@ -875,29 +883,34 @@ public class AdminDashboardPanel extends JPanel {
         }
     }
 
+    // Makes a value safe for CSV: wraps it in quotes and doubles any quotes inside it
+    // (so a name like  Jo "DJ" Kim  doesn't break the columns).
     private String csv(String value) {
         String escaped = value == null ? "" : value.replace("\"", "\"\"");
         return "\"" + escaped + "\"";
     }
 
+    // Copies an event (the controller makes the copy), then opens the copy in the editor.
     private void duplicateEvent(Event event) {
         Event copy = eventManager.duplicateEvent(event.getEventId(), hostId);
         refreshEvents();
         loadEvent(copy);
     }
 
+    // Archives (hides) or restores an event, after asking the host to confirm.
     private void toggleArchive(Event event) {
-        boolean archive = !event.isArchived();
+        boolean archive = !event.isArchived();  // The opposite of its current state
         int answer = JOptionPane.showConfirmDialog(this,
                 archive ? "Archive this event? It will no longer appear in the public catalog."
                         : "Restore this event to your dashboard and the public catalog?",
                 "Confirm event change", JOptionPane.YES_NO_OPTION);
-        if (answer == JOptionPane.YES_OPTION) {
+        if (answer == JOptionPane.YES_OPTION) {  // Only if the host clicked Yes
             eventManager.setArchived(event.getEventId(), archive);
             refreshEvents();
         }
     }
 
+    // Text colour for each status in the event rows.
     private Color statusColor(String status) {
         return switch (status) {
             case "ON_SALE" -> new Color(0x1F, 0x8A, 0x55);
@@ -907,6 +920,8 @@ public class AdminDashboardPanel extends JPanel {
         };
     }
 
+    // Builds the event editor page: a red error line, nine labelled fields, the ticket tier
+    // manager, the custom details section and the Save / New buttons. The whole form scrolls.
     private JPanel buildManagementForm() {
         styleInputs();
         JPanel form = new JPanel(new GridBagLayout());
@@ -923,6 +938,7 @@ public class AdminDashboardPanel extends JPanel {
         validationConstraints.fill = GridBagConstraints.HORIZONTAL;
         validationConstraints.insets = new Insets(0, 0, 14, 0);
         form.add(validationLabel, validationConstraints);
+        // Rows 1-9: one labelled field each. "*" marks required fields.
         addFormField(form, "Event title *", titleField, 1);
         addFormField(form, "Event date *", dateChooser, 2);
         addFormField(form, "Venue *", venueField, 3);
@@ -940,17 +956,17 @@ public class AdminDashboardPanel extends JPanel {
         constraints.weightx = 1;
         constraints.fill = GridBagConstraints.HORIZONTAL;
         constraints.insets = new Insets(10, 0, 5, 0);
-        form.add(buildTierManager(), constraints);
+        form.add(buildTierManager(), constraints);  // Row 10: ticket tiers
 
         constraints.gridy = 11;
-        form.add(buildCustomFields(), constraints);
+        form.add(buildCustomFields(), constraints);  // Row 11: custom details
 
         JButton save = new JButton("Save Event");
         ViewStyles.stylePrimaryButton(save);
-        save.addActionListener(action -> saveEvent());
+        save.addActionListener(action -> saveEvent());  // Validate and save
         JButton fresh = new JButton("New Event");
         ViewStyles.styleSecondaryButton(fresh);
-        fresh.addActionListener(action -> startNewEvent());
+        fresh.addActionListener(action -> startNewEvent());  // Clear the form
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         actions.setOpaque(false);
         actions.add(fresh);
@@ -969,6 +985,7 @@ public class AdminDashboardPanel extends JPanel {
         return wrapper;
     }
 
+    // The banner row: a text box for the picture's path plus a "Browse..." button.
     private JPanel buildBannerField() {
         JPanel field = new JPanel(new BorderLayout(8, 0));
         field.setOpaque(false);
@@ -980,6 +997,8 @@ public class AdminDashboardPanel extends JPanel {
         return field;
     }
 
+    // The custom details section: name + value boxes with an "Add detail" button,
+    // the list of details added so far, and a "Remove selected detail" button.
     private JPanel buildCustomFields() {
         JPanel section = new JPanel(new BorderLayout(8, 8));
         section.setOpaque(false);
@@ -1008,6 +1027,7 @@ public class AdminDashboardPanel extends JPanel {
         JButton remove = new JButton("Remove selected detail");
         ViewStyles.styleSecondaryButton(remove);
         remove.addActionListener(action -> {
+            // Remove whichever detail is selected in the list (-1 means nothing is selected).
             int selected = customFieldList.getSelectedIndex();
             if (selected >= 0) customFieldModel.remove(selected);
         });
@@ -1020,6 +1040,8 @@ public class AdminDashboardPanel extends JPanel {
         return section;
     }
 
+    // Adds the typed name/value to the details list. If a detail with that name already exists
+    // (ignoring capitals), it's replaced instead of added twice.
     private void addCustomField() {
         String name = customNameField.getText().trim();
         String value = customValueField.getText().trim();
@@ -1035,11 +1057,12 @@ public class AdminDashboardPanel extends JPanel {
                 return;
             }
         }
-        customFieldModel.addElement(new CustomField(name, value));
+        customFieldModel.addElement(new CustomField(name, value));  // Not found: add it as a new detail
         customNameField.setText("");
         customValueField.setText("");
     }
 
+    // Opens a file picker (images only) and puts the chosen file's path in the banner box.
     private void chooseBanner() {
         JFileChooser chooser = new JFileChooser();
         chooser.setFileFilter(new FileNameExtensionFilter("Image files", "png", "jpg", "jpeg", "gif", "webp"));
@@ -1048,14 +1071,17 @@ public class AdminDashboardPanel extends JPanel {
         }
     }
 
+    // Opens a colour picker. If the host picks a colour, remember it and show it on the button.
     private void chooseAccentColor() {
         Color chosen = JColorChooser.showDialog(this, "Choose event accent", selectedAccent);
-        if (chosen != null) {
+        if (chosen != null) {  // null means the host cancelled
             selectedAccent = chosen;
             accentColorButton.setBackground(chosen);
         }
     }
 
+    // The ticket tier section: name/price/capacity inputs with an Add/Update button,
+    // the list of tiers, and a "Remove Selected Tier" button.
     private JPanel buildTierManager() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setOpaque(false);
@@ -1072,16 +1098,17 @@ public class AdminDashboardPanel extends JPanel {
         GridBagConstraints button = new GridBagConstraints();
         button.gridx = 2;
         button.gridy = 0;
-        button.gridheight = 3;
+        button.gridheight = 3;  // The button spans 3 rows, beside the inputs
         button.insets = new Insets(0, 8, 0, 0);
         editor.add(tierActionButton, button);
         ViewStyles.stylePrimaryButton(tierActionButton);
         tierActionButton.addActionListener(action -> addOrUpdateTier());
 
-        tierList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tierList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);  // Only one tier can be selected at a time
         tierList.setBackground(ViewStyles.SURFACE);
         tierList.setForeground(ViewStyles.FOREGROUND);
         tierList.setFixedCellHeight(34);
+        // A "renderer" decides how each list item looks, e.g. "VIP  |  KES 3,750.00  |  12 / 18 available".
         tierList.setCellRenderer((list, tier, index, selected, focus) -> {
             JLabel row = new JLabel(String.format("%s  |  KES %,.2f  |  %d / %d available",
                     tier.getTierName(), tier.getPrice(), tier.getAvailableSeats(), tier.getInitialCapacity()));
@@ -1091,6 +1118,8 @@ public class AdminDashboardPanel extends JPanel {
             row.setForeground(ViewStyles.FOREGROUND);
             return row;
         });
+        // Clicking a tier copies it into the inputs so it can be edited.
+        // getValueIsAdjusting() is true while the mouse is still being dragged, so we wait until it's false.
         tierList.addListSelectionListener(event -> {
             if (!event.getValueIsAdjusting()) {
                 loadSelectedTier();
@@ -1114,6 +1143,7 @@ public class AdminDashboardPanel extends JPanel {
         return panel;
     }
 
+    // Applies the dark input style to every box in the editor.
     private void styleInputs() {
         ViewStyles.styleInput(titleField);
         styleDateChooser(dateChooser);
@@ -1132,6 +1162,7 @@ public class AdminDashboardPanel extends JPanel {
         accentColorButton.addActionListener(action -> chooseAccentColor());
     }
 
+    // Styles a date picker: its text box gets the normal input style.
     private void styleDateChooser(JDateChooser chooser) {
         if (chooser.getDateEditor().getUiComponent() instanceof JTextField editor) {
             ViewStyles.styleInput(editor);
@@ -1140,6 +1171,7 @@ public class AdminDashboardPanel extends JPanel {
         chooser.setPreferredSize(new Dimension(260, 36));
     }
 
+    // Adds one editor row: label in column 0, input stretching across column 1.
     private void addFormField(JPanel form, String label, java.awt.Component input, int row) {
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridy = row;
@@ -1155,6 +1187,7 @@ public class AdminDashboardPanel extends JPanel {
         form.add(input, constraints);
     }
 
+    // Adds one tier input: label at (column, row), input just to its right.
     private void addTierField(JPanel panel, String label, java.awt.Component input, int row, int column) {
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = column;
@@ -1171,6 +1204,7 @@ public class AdminDashboardPanel extends JPanel {
         panel.add(input, constraints);
     }
 
+    // Styles the text box inside a number spinner.
     private void styleSpinner(JSpinner spinner) {
         if (spinner.getEditor() instanceof JSpinner.DefaultEditor editor) {
             ViewStyles.styleInput(editor.getTextField());
