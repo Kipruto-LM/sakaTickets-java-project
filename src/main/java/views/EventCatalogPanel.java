@@ -113,7 +113,7 @@ public class EventCatalogPanel extends JPanel {
             BorderFactory.createEmptyBorder(8, 8, 10, 8)));                // Padding inside
         card.putClientProperty("FlatLaf.style", "arc: 10");
         card.setPreferredSize(new Dimension(280, 285));
-        card.add(EventVisuals.event(event, 132, 8), BorderLayout.NORTH);   // Picture at the top
+        card.add(EventVisuals.event(event, 132), BorderLayout.NORTH);   // Picture at the top
 
         // --- Left side of the card: the text details, stacked vertically ---
         JPanel details = new JPanel();

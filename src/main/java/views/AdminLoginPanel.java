@@ -104,7 +104,7 @@ public class AdminLoginPanel extends JPanel {
     private JPanel buildHostIntroduction() {
         JPanel intro = new JPanel(new BorderLayout(0, 14));
         intro.setOpaque(false);
-        intro.add(EventVisuals.hostChoice(255, 12), BorderLayout.NORTH);   // Picture on top
+        intro.add(EventVisuals.hostChoice(255), BorderLayout.NORTH);   // Picture on top
 
         // The text, stacked vertically.
         JPanel copy = new JPanel();

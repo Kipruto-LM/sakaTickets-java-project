@@ -60,7 +60,7 @@ public class TicketSummaryPanel extends JPanel {
         Event event = eventManager.getEventById(booking.getEventId());   // null if it was deleted
         // Swap in the event's picture (or the default concert photo if there's no event).
         hero.removeAll();
-        hero.add(event == null ? EventVisuals.hero(180, 12) : EventVisuals.event(event, 180, 12),
+        hero.add(event == null ? EventVisuals.hero(180) : EventVisuals.event(event, 180),
             BorderLayout.CENTER);
         hero.revalidate();     // Re-do the layout after changing what's inside
         hero.repaint();        // Redraw it
@@ -120,7 +120,7 @@ public class TicketSummaryPanel extends JPanel {
         body.setOpaque(false);
         hero.setOpaque(false);
         hero.setPreferredSize(new Dimension(560, 180));
-        hero.add(EventVisuals.hero(180, 12), BorderLayout.CENTER);   // Placeholder picture until setBooking()
+        hero.add(EventVisuals.hero(180), BorderLayout.CENTER);   // Placeholder picture until setBooking()
         body.add(hero, BorderLayout.NORTH);
         // The details use a GridBagLayout: column 0 = label, column 1 = value.
         JPanel details = new JPanel(new GridBagLayout());

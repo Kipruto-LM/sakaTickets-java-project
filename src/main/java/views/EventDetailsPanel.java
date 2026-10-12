@@ -99,7 +99,7 @@ public class EventDetailsPanel extends JPanel {
             addBlock(missing);
         } else {
             addBlock(buildTopBar());
-            JPanel banner = EventVisuals.event(event, 260, 14);   // 260px-tall picture
+            JPanel banner = EventVisuals.event(event, 260);   // 260px-tall picture
             banner.setPreferredSize(new Dimension(1, 260));       // Width 1 = let the layout decide
             addBlock(banner);
             addBlock(buildColumns(event));

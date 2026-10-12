@@ -105,7 +105,7 @@ public class CheckoutPanel extends JPanel {
         dateLabel.setText(selectedEvent.getDate());
         venueLabel.setText(selectedEvent.getVenue());
         eventImage.removeAll();
-        eventImage.add(EventVisuals.event(selectedEvent, 156, 9), BorderLayout.CENTER);
+        eventImage.add(EventVisuals.event(selectedEvent, 156), BorderLayout.CENTER);
         eventImage.revalidate();
         eventImage.repaint();
         // Refill the tier drop-down with this event's tiers.

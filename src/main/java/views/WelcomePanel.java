@@ -63,11 +63,11 @@ public class WelcomePanel extends JPanel {
         // Card 1, for guests. Clicking its button runs browseEvents.
         choices.add(buildChoice("01   /   ATTEND", "Find your people.\nFind your next thing.",
             "Live music, food, culture and ideas worth leaving home for.", "Browse events",
-            EventVisuals.buyerChoice(216, 12), ViewStyles.ACCENT, Color.WHITE, browseEvents));
+            EventVisuals.buyerChoice(216), ViewStyles.ACCENT, Color.WHITE, browseEvents));
         // Card 2, for hosts. A teal button with dark text. Clicking it runs hostEventAction.
         choices.add(buildChoice("02   /   CREATE", "Put your event\non the map.",
             "Build your event, shape ticket tiers, and follow every sale.", "Start hosting",
-            EventVisuals.hostChoice(216, 12), new Color(0x00, 0xE5, 0xC4), new Color(0x0F, 0x11, 0x17),
+            EventVisuals.hostChoice(216), new Color(0x00, 0xE5, 0xC4), new Color(0x0F, 0x11, 0x17),
             hostEventAction));
         choices.setPreferredSize(new Dimension(1000, 438));                  // Ideal size of the card row
         choices.setMaximumSize(new Dimension(Integer.MAX_VALUE, 438));       // Any width, max 438px tall
