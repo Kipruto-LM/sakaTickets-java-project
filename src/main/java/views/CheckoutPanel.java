@@ -35,8 +35,8 @@ import models.TicketTier;                   // The chosen ticket type
  * - Inheritance: extends JPanel.
  * - MVC: the View collects the input, the Event model checks and takes the seats,
  *   and the OrderManager controller records the Booking.
- * - Constructor and method overloading: two constructors and two setEvent() methods
- *   (one takes an ID, the other an Event object).
+ * - Method overloading: three setEvent() methods (one takes an ID, one an Event object,
+ *   and one an Event plus the tier to pre-select).
  * - Composition: the panel's own state is the event and tier currently selected.
  */
 public class CheckoutPanel extends JPanel {
@@ -62,17 +62,8 @@ public class CheckoutPanel extends JPanel {
     private Event selectedEvent;                        // The event being bought (can change)
     private TicketTier selectedTier;                    // The tier currently picked in the drop-down
 
-    // Shorter constructor: supplies a default "booking confirmed" action and calls the full one.
-    // The default shows a pop-up with the receipt code, then returns to the catalogue.
-    public CheckoutPanel(EventManager eventManager, OrderManager orderManager, Runnable returnToCatalog) {
-        this(eventManager, orderManager, returnToCatalog, booking -> {
-            JOptionPane.showMessageDialog(null, "Purchase confirmed. Receipt: " + booking.getBookingId(),
-                    "Booking successful", JOptionPane.INFORMATION_MESSAGE);
-            returnToCatalog.run();
-        });
-    }
-
-    // Full constructor: stores everything, then builds the screen.
+    // Constructor: stores everything, then builds the screen.
+    // bookingConfirmed = what to do after a successful purchase (MainFrame shows the receipt).
     public CheckoutPanel(EventManager eventManager, OrderManager orderManager, Runnable returnToCatalog,
             Consumer<Booking> bookingConfirmed) {
         this.eventManager = eventManager;

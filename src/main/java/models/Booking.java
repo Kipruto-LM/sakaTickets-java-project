@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * - Class vs object: this class is the blueprint. Every purchase creates a new Booking object.
  * - Encapsulation: all fields are private. Other classes read and change them only
  *   through the public getters and setters below.
- * - Constructor overloading: there are several constructors with different parameters,
+ * - Constructor overloading: there are two constructors (an empty one and a full one),
  *   so a Booking can be built in more than one way.
  */
 public class Booking {
@@ -31,12 +31,6 @@ public class Booking {
 
     // Empty (default) constructor: creates a blank Booking that can be filled in later with setters.
     public Booking() {
-    }
-
-    // Overloaded constructor without a tier name. "this(...)" passes the work on to the
-    // full constructor below (with "" as the tier name), so the setup code is written only once.
-    public Booking(String bookingId, String eventId, String customerName, String customerEmail, int quantity, double totalPrice) {
-        this(bookingId, eventId, customerName, customerEmail, "", quantity, totalPrice);
     }
 
     // Full constructor. "this.field = parameter" copies each value into this object's own field.

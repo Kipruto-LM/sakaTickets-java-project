@@ -21,8 +21,6 @@ import java.util.UUID;               // Random unique IDs (for receipt codes)
  * OOP ideas shown here:
  * - MVC: the checkout screen calls createBooking(), and the admin dashboard calls the
  *   calculate methods. Neither screen does this work itself.
- * - Method overloading: there are two createBooking() methods. The shorter one fills in an
- *   empty tier name and calls the longer one.
  * - Objects creating objects: createBooking() is the one place where new Booking objects are made.
  * - Abstraction: the analytics methods at the bottom turn the raw list of bookings into
  *   ready-to-chart numbers, so the screens don't need to know how they are worked out.
@@ -36,13 +34,8 @@ public class OrderManager {
         // In a complete app, you would load existing bookings from a JSON file here
     }
 
-    // Creates a new booking, generates a UUID, and saves it to the list
-    // (Short version without a tier name - it calls the full version below.)
-    public Booking createBooking(String eventId, String customerName, String customerEmail, int quantity, double totalPrice) {
-        return createBooking(eventId, customerName, customerEmail, "", quantity, totalPrice);
-    }
-
-    // Full version: builds the Booking object, stores it, and returns it to the caller.
+    // Creates a new booking: builds the Booking object with a short random receipt code,
+    // stores it, and returns it to the caller.
     public Booking createBooking(String eventId, String customerName, String customerEmail, String tierName,
             int quantity, double totalPrice) {
         // Generate a short, readable 8-character alphanumeric ticket ID
@@ -126,11 +119,6 @@ public class OrderManager {
         return (long) (days * 24 * 60);                       // Convert days to minutes
     }
 
-    // Retrieve all bookings (for the Admin dashboard)
-    public List<Booking> getAllBookings() {
-        return allBookings;
-    }
-
     // Retrieve bookings for a specific event to check sales
     public List<Booking> getBookingsByEvent(String eventId) {
         List<Booking> eventBookings = new ArrayList<>();   // Start an empty result list
@@ -169,15 +157,6 @@ public class OrderManager {
             }
         }
         return counts;
-    }
-
-    // Tickets sold in the last `days` days (for "12 sold this week" style messages).
-    public int getRecentTicketsSold(String eventId, int days) {
-        int total = 0;
-        for (int count : getDailyTicketSales(eventId, days)) {   // Add up each day's count
-            total += count;
-        }
-        return total;
     }
 
     // Revenue per tier name, in the event's tier order.

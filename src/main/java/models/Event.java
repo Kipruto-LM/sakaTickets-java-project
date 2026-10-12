@@ -53,13 +53,6 @@ public class Event {
         this.hostId = hostId;
     }
 
-    // Overloaded constructor: a shortcut for an event with a single "Regular" tier.
-    // It creates that TicketTier object and passes it to the main constructor with this(...).
-    public Event(String eventId, String title, String date, String venue, int availableSeats, double ticketPrice) {
-        this(eventId, title, date, venue,
-                List.of(new TicketTier("Regular", ticketPrice, availableSeats)), "ON_SALE", "");
-    }
-
     // Getters and setters (encapsulation): the only way other classes reach the fields.
 
     // Returns the event's ID.
@@ -176,16 +169,5 @@ public class Event {
     // Adds up the available seats of every tier.
     public int getAvailableSeats() {
         return ticketTiers.stream().mapToInt(TicketTier::getAvailableSeats).sum();
-    }
-
-    // Older single-price methods, kept so earlier code still works. They use the first tier.
-    // Price of the first tier, or 0 if the event has no tiers.
-    public double getTicketPrice() {
-        return ticketTiers.isEmpty() ? 0.0 : ticketTiers.get(0).getPrice();
-    }
-
-    // Buys tickets from the first tier. Returns false if there are no tiers or the purchase fails.
-    public boolean purchaseTickets(int amount) {
-        return !ticketTiers.isEmpty() && purchase(ticketTiers.get(0).getTierName(), amount);
     }
 }
