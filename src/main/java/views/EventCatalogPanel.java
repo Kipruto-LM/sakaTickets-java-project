@@ -25,18 +25,22 @@ import models.TicketTier;
  * OOP ideas shown here:
  * - Inheritance: extends JPanel.
  * - MVC: this is a View. It reads events from the EventManager (Controller) and only displays them.
- * - Callbacks: when "Buy" is clicked, it passes the event ID to checkoutAction
- *   (a Consumer<String>), and MainFrame decides what happens next.
+ * - Callbacks: when "Book Now" is clicked, it passes the event ID to checkoutAction
+ *   (a Consumer<String>), and MainFrame decides what happens next. Clicking a card or
+ *   "View details" does the same with detailsAction.
  * - Nested class: RoundedCardPanel at the bottom is a small JPanel subclass used only here.
  */
 public class EventCatalogPanel extends JPanel {
     private final EventManager eventManager;
     private final Consumer<String> checkoutAction;
+    private final Consumer<String> detailsAction;
     private final JPanel eventList = new JPanel();
 
-    public EventCatalogPanel(EventManager eventManager, Consumer<String> checkoutAction, Runnable backToHome) {
+    public EventCatalogPanel(EventManager eventManager, Consumer<String> checkoutAction,
+            Consumer<String> detailsAction, Runnable backToHome) {
         this.eventManager = eventManager;
         this.checkoutAction = checkoutAction;
+        this.detailsAction = detailsAction;
         setLayout(new BorderLayout(0, 16));
         setBackground(ViewStyles.BACKGROUND);
         setBorder(new EmptyBorder(22, 30, 22, 30));
@@ -138,8 +142,10 @@ public class EventCatalogPanel extends JPanel {
         purchase.setOpaque(false);
         purchase.setLayout(new BoxLayout(purchase, BoxLayout.Y_AXIS));
 
-        double lowestPrice = event.getTicketTiers().stream().mapToDouble(TicketTier::getPrice)
-            .min().orElse(0.0);
+        // Cheapest tier that still has seats; falls back to the cheapest overall when all are sold out.
+        double lowestPrice = event.getTicketTiers().stream().filter(tier -> tier.getAvailableSeats() > 0)
+            .mapToDouble(TicketTier::getPrice).min()
+            .orElse(event.getTicketTiers().stream().mapToDouble(TicketTier::getPrice).min().orElse(0.0));
         JLabel price = new JLabel(String.format("From KES %,.0f", lowestPrice));
         price.setForeground(ViewStyles.FOREGROUND);
         price.setFont(price.getFont().deriveFont(Font.BOLD, 16f));
@@ -162,8 +168,25 @@ public class EventCatalogPanel extends JPanel {
         bookButton.setAlignmentX(RIGHT_ALIGNMENT);
         bookButton.addActionListener(action -> checkoutAction.accept(event.getEventId()));
 
+        JButton detailsButton = new JButton("View details");
+        ViewStyles.styleSecondaryButton(detailsButton);
+        detailsButton.setFont(detailsButton.getFont().deriveFont(12f));
+        detailsButton.setAlignmentX(RIGHT_ALIGNMENT);
+        detailsButton.addActionListener(action -> detailsAction.accept(event.getEventId()));
+
+        // Clicking anywhere on the card (outside the buttons) also opens the details page.
+        card.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        card.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent mouseEvent) {
+                detailsAction.accept(event.getEventId());
+            }
+        });
+
         purchase.add(price);
         purchase.add(seats);
+        purchase.add(detailsButton);
+        purchase.add(javax.swing.Box.createVerticalStrut(6));
         purchase.add(bookButton);
         JPanel east = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         east.setOpaque(false);

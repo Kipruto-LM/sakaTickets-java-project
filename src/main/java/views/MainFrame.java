@@ -29,6 +29,7 @@ public class MainFrame extends JFrame {
     private static final String ADMIN_LOGIN = "AdminLogin";
     private static final String ADMIN_DASHBOARD = "AdminDashboard";
     private static final String TICKET_SUMMARY = "TicketSummary";
+    private static final String EVENT_DETAILS = "EventDetails";
 
     // CardLayout stacks the screens like a deck of cards and shows one at a time.
     private final CardLayout cardLayout = new CardLayout();
@@ -39,6 +40,7 @@ public class MainFrame extends JFrame {
     private final CheckoutPanel checkoutPanel;
     private final TicketSummaryPanel ticketSummaryPanel;
     private final EventCatalogPanel catalogPanel;
+    private final EventDetailsPanel detailsPanel;
     private AdminDashboardPanel adminDashboardPanel;
 
     public MainFrame() {
@@ -50,10 +52,15 @@ public class MainFrame extends JFrame {
 
         // Each screen object gets the controllers it needs, plus callbacks for moving between pages.
         // "this::showCheckout" is a method reference: it passes our method in as an object.
-        catalogPanel = new EventCatalogPanel(eventManager, this::showCheckout,
+        catalogPanel = new EventCatalogPanel(eventManager, this::showCheckout, this::showEventDetails,
             () -> showCard(WELCOME));
         checkoutPanel = new CheckoutPanel(eventManager, orderManager, this::showCatalog, this::showTicketSummary);
         ticketSummaryPanel = new TicketSummaryPanel(eventManager, this::showCatalog);
+        // The lambda (event, tier) -> ... is a BiConsumer: an object holding a two-argument action.
+        detailsPanel = new EventDetailsPanel(orderManager, this::showCatalog, (event, tierName) -> {
+            checkoutPanel.setEvent(event, tierName);
+            showCard(CHECKOUT);
+        });
         WelcomePanel welcomePanel = new WelcomePanel(this::showCatalog, () -> showCard(ADMIN_LOGIN));
         AdminLoginPanel adminLoginPanel = new AdminLoginPanel(accountManager, this::showAdminDashboard,
             () -> showCard(WELCOME));
@@ -61,6 +68,7 @@ public class MainFrame extends JFrame {
         cardPanel.add(welcomePanel, WELCOME);
         cardPanel.add(catalogPanel, CATALOG);
         cardPanel.add(checkoutPanel, CHECKOUT);
+        cardPanel.add(detailsPanel, EVENT_DETAILS);
         cardPanel.add(ticketSummaryPanel, TICKET_SUMMARY);
         cardPanel.add(adminLoginPanel, ADMIN_LOGIN);
 
@@ -77,6 +85,11 @@ public class MainFrame extends JFrame {
     private void showCheckout(String eventId) {
         checkoutPanel.setEvent(eventId);
         cardLayout.show(cardPanel, CHECKOUT);
+    }
+
+    private void showEventDetails(String eventId) {
+        detailsPanel.showEvent(eventManager.getEventById(eventId));
+        showCard(EVENT_DETAILS);
     }
 
     private void showCatalog() {

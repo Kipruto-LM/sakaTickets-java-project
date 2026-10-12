@@ -78,6 +78,12 @@ public class CheckoutPanel extends JPanel {
     }
 
     public void setEvent(Event event) {
+        setEvent(event, null);
+    }
+
+    // Third overload: opens checkout with a particular tier already chosen (used by the event
+    // details page). With no tier given, it picks the first tier that still has seats.
+    public void setEvent(Event event, String preferredTierName) {
         selectedEvent = event;
         if (selectedEvent == null) {
             titleLabel.setText("Event unavailable");
@@ -103,6 +109,15 @@ public class CheckoutPanel extends JPanel {
         selectedEvent.getTicketTiers().forEach(tierSelector::addItem);
         if (tierSelector.getItemCount() > 0) {
             tierSelector.setSelectedIndex(0);
+            for (int index = 0; index < tierSelector.getItemCount(); index++) {
+                TicketTier tier = tierSelector.getItemAt(index);
+                boolean preferred = preferredTierName != null && preferredTierName.equals(tier.getTierName());
+                boolean firstAvailable = preferredTierName == null && tier.getAvailableSeats() > 0;
+                if (preferred || firstAvailable) {
+                    tierSelector.setSelectedIndex(index);
+                    break;
+                }
+            }
         }
         updateTierSelection();
     }
