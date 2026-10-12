@@ -27,6 +27,8 @@ public class WelcomePanel extends JPanel {
         setLayout(new BorderLayout(0, 24));
         setBackground(new Color(0x0F, 0x11, 0x17));
         setBorder(new EmptyBorder(25, 38, 28, 38));
+        // The slim header bar from the original design stays at the very top.
+        add(buildHeader(), BorderLayout.NORTH);
 
         JPanel content = new JPanel();
         content.setOpaque(false);
@@ -57,6 +59,33 @@ public class WelcomePanel extends JPanel {
         add(content, BorderLayout.CENTER);
     }
 
+    // Builds the slim header bar: a small "SakaTickets" with "NAIROBI · LIVE EVENTS" under it
+    // on the left, and the city's location on the right.
+    private JPanel buildHeader() {
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        // A dividing line under the header separates it from the big brand below.
+        header.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(0x2A, 0x30, 0x44)),
+                new EmptyBorder(0, 0, 14, 0)));
+        JPanel identity = new JPanel(new GridLayout(2, 1, 0, 2));
+        identity.setOpaque(false);
+        JLabel name = new JLabel("SakaTickets");
+        name.setFont(ViewStyles.DISPLAY_FONT.deriveFont(Font.BOLD, 18f));
+        name.setForeground(Color.WHITE);
+        JLabel descriptor = new JLabel("NAIROBI  ·  LIVE EVENTS");
+        descriptor.setForeground(new Color(0x00, 0xB4, 0xFF));
+        descriptor.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 9f));
+        identity.add(name);
+        identity.add(descriptor);
+        header.add(identity, BorderLayout.WEST);
+        JLabel location = new JLabel("KENYA   /   01°17'S  36°49'E");
+        location.setForeground(new Color(0x88, 0x96, 0xB3));
+        location.setFont(ViewStyles.DATA_FONT.deriveFont(10f));
+        header.add(location, BorderLayout.EAST);
+        return header;
+    }
+
     // Builds the centred brand block: a small line on top, the large "SakaTickets" name,
     // a short accent bar under it, and the tagline below.
     private JPanel buildBrand() {
@@ -64,7 +93,7 @@ public class WelcomePanel extends JPanel {
         brand.setOpaque(false);
         brand.setLayout(new BoxLayout(brand, BoxLayout.Y_AXIS));
 
-        JLabel eyebrow = new JLabel("NAIROBI  ·  LIVE EVENTS");
+        JLabel eyebrow = new JLabel("GOOD THINGS HAPPEN HERE");
         eyebrow.setForeground(new Color(0x00, 0xE5, 0xC4));
         eyebrow.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 12f));
 
