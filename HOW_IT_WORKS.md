@@ -386,13 +386,14 @@ tier list — it calls our version, and you see **`VIP - KES 3,750 (12 of 18 lef
 We never call `toString()` ourselves; Swing does it for us.
 
 **Example 2 — drawing.** `JPanel` has a `paintComponent` method that draws the panel. Our
-`RoundedCardPanel` (inside `EventCatalogPanel.java`) overrides it to draw rounded corners:
+`ImagePanel` (inside `EventVisuals.java`) overrides it to draw an event's picture:
 
 ```java
 @Override
-protected void paintComponent(java.awt.Graphics graphics) {
-    // ... fill a rounded rectangle ...
-    super.paintComponent(graphics);    // then also run the parent's normal drawing
+protected void paintComponent(Graphics g) {
+    super.paintComponent(g);           // first run the parent's normal drawing (the background)
+    // ... then draw the picture, scaled to fill the panel ...
+    g.drawImage(image, x, y, drawWidth, drawHeight, null);
 }
 ```
 
@@ -509,7 +510,7 @@ scroll it (only up and down, never sideways).
 | **Method reference** `this::name` | A shortcut for a lambda that just calls one method. | `this::showCatalog` = "run my `showCatalog` method" |
 | **Ternary** `a ? b : c` | A one-line if/else: "if `a`, use `b`, otherwise `c`". | `left == 0 ? "Sold out" : "Select"` |
 | **`String.format`** | Builds text with numbers in it. `%,.0f` = number with commas, no decimals. | `String.format("KES %,.0f", 1500.0)` → `"KES 1,500"` |
-| **Nested class** | A small class written inside another class, only used there. | `RoundedCardPanel` inside `EventCatalogPanel` |
+| **Nested class** | A small class written inside another class, only used there. | `ImagePanel` inside `EventVisuals` |
 
 ---
 
