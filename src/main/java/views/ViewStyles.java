@@ -28,6 +28,11 @@ final class ViewStyles {
     static final Color FOREGROUND = Color.WHITE;                   // Main text
     static final Color MUTED = new Color(0xA0, 0xA0, 0xA0);        // Less important text (grey)
     static final Color OUTLINE = new Color(0x38, 0x38, 0x38);      // Thin borders
+    // Dashboard colours (a slightly blue-tinted dark theme used by the host pages).
+    static final Color PAGE = new Color(0x0F, 0x11, 0x17);         // Dashboard page background
+    static final Color CARD = new Color(0x17, 0x1B, 0x24);         // Dashboard cards and sidebar
+    static final Color CARD_BORDER = new Color(0x2A, 0x30, 0x44);  // Card outlines and dividers
+    static final Color LABEL = new Color(0x88, 0x96, 0xB3);        // Small grey-blue captions
     // Fonts: family name, style, size in points.
     static final Font DISPLAY_FONT = new Font("Ubuntu", Font.PLAIN, 16);       // Headings
     static final Font BODY_FONT = new Font("Ubuntu Sans", Font.PLAIN, 14);     // Normal text
@@ -77,6 +82,16 @@ final class ViewStyles {
         button.putClientProperty("JButton.buttonType", "roundRect");
         button.setRolloverEnabled(true);
         button.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+    }
+
+    // Makes a compact secondary button (smaller text and padding), used in lists and toolbars.
+    static JButton smallButton(String text) {
+        JButton button = new JButton(text);
+        styleSecondaryButton(button);
+        button.setFont(button.getFont().deriveFont(12f));
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(OUTLINE), BorderFactory.createEmptyBorder(5, 8, 5, 8)));
+        return button;
     }
 
     // Styles a text box: white text on a dark grey fill, with an outline and padding.
