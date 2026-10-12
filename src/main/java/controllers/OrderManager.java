@@ -1,8 +1,12 @@
 package controllers;
 
 import models.Booking;
+import models.Event;
+import models.TicketTier;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Random;
 import java.util.UUID;
 
 /**
@@ -43,6 +47,38 @@ public class OrderManager {
         
         // In a complete app, you would save the updated allBookings list to a JSON file here
         return newBooking;
+    }
+
+    // Fills the sample events with past sales so the catalogue and dashboard look realistic.
+    // Each sale goes through Event.purchase() (which takes the seats) and is recorded as a
+    // Booking, the same way a real checkout works. A fixed Random seed gives the same
+    // sales every time the app starts.
+    public void seedSampleSales(List<Event> events) {
+        String[] guests = {"Wanjiru Kamau", "Otieno Ochieng", "Achieng Atieno", "Kipchoge Rotich",
+            "Njeri Mwangi", "Mutua Musyoka", "Akinyi Odhiambo", "Kiprop Kibet", "Wambui Njoroge",
+            "Omondi Owino", "Chebet Langat", "Kamau Githinji", "Nyambura Wairimu", "Barasa Wekesa",
+            "Moraa Nyaboke", "Mwende Mutiso", "Juma Hassan", "Amina Abdi", "Kariuki Maina", "Zawadi Mbeki"};
+        // Share of each event's seats already sold, in the same order as the sample events.
+        double[] sellThrough = {0.72, 0.58, 0.91, 0.44, 0.66, 0.37, 0.53};
+        Random random = new Random(2026);
+        for (int index = 0; index < events.size() && index < sellThrough.length; index++) {
+            Event event = events.get(index);
+            int target = (int) Math.round(event.getAvailableSeats() * sellThrough[index]);
+            int sold = 0;
+            while (sold < target && !event.getTicketTiers().isEmpty()) {
+                TicketTier tier = event.getTicketTiers().get(0);
+                int quantity = Math.min(1 + random.nextInt(4), target - sold);
+                if (!event.purchase(tier.getTierName(), quantity)) {
+                    break;
+                }
+                String guest = guests[random.nextInt(guests.length)];
+                String email = guest.toLowerCase(Locale.ROOT).replace(' ', '.') + "@example.com";
+                String bookingId = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                allBookings.add(new Booking(bookingId, event.getEventId(), guest, email, tier.getTierName(),
+                        quantity, tier.getPrice() * quantity));
+                sold += quantity;
+            }
+        }
     }
 
     // Retrieve all bookings (for the Admin dashboard)

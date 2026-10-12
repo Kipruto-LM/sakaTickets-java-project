@@ -46,6 +46,7 @@ public class MainFrame extends JFrame {
         eventManager = new EventManager();
         accountManager = new AccountManager();
         orderManager = new OrderManager();
+        orderManager.seedSampleSales(eventManager.getEvents());
 
         // Each screen object gets the controllers it needs, plus callbacks for moving between pages.
         // "this::showCheckout" is a method reference: it passes our method in as an object.
