@@ -132,13 +132,20 @@ public class OrderManager {
 
     // Total money taken for one event: adds up getTotalPrice() from each of its bookings.
     public double calculateEventRevenue(String eventId) {
-        return getBookingsByEvent(eventId).stream().mapToDouble(Booking::getTotalPrice).sum();
+        double total = 0;
+        for (Booking booking : getBookingsByEvent(eventId)) {
+            total += booking.getTotalPrice();
+        }
+        return total;
     }
 
     // Total tickets sold for one event: adds up the quantity of each of its bookings.
-    // "Booking::getQuantity" is a method reference: "call getQuantity() on each booking".
     public int calculateTotalTicketsSold(String eventId) {
-        return getBookingsByEvent(eventId).stream().mapToInt(Booking::getQuantity).sum();
+        int total = 0;
+        for (Booking booking : getBookingsByEvent(eventId)) {
+            total += booking.getQuantity();
+        }
+        return total;
     }
 
     // ---- Analytics: turn bookings into numbers the charts can draw ----
@@ -185,10 +192,14 @@ public class OrderManager {
 
     // The most recent bookings first, up to `limit` of them.
     public List<Booking> getRecentBookings(String eventId, int limit) {
-        return getBookingsByEvent(eventId).stream()
-                .sorted(Comparator.comparing(Booking::getPurchasedAt).reversed())   // Newest first
-                .limit(limit)                                                         // Keep only the first `limit`
-                .toList();
+        List<Booking> sorted = getBookingsByEvent(eventId);
+        // Sort by purchase time, then reverse so the newest comes first.
+        sorted.sort(Comparator.comparing(Booking::getPurchasedAt).reversed());
+        List<Booking> result = new ArrayList<>();
+        for (int i = 0; i < sorted.size() && i < limit; i++) {   // Take at most `limit` of them
+            result.add(sorted.get(i));
+        }
+        return result;
     }
 
     // The tier name to use for a booking, or "General" if it has none (older bookings).

@@ -5,7 +5,6 @@ import java.util.ArrayList;              // A resizable list
 import java.util.Collections;            // Helpers for lists, e.g. making a read-only view
 import java.util.List;                   // The general list type
 import java.util.Objects;                // Null-safe helpers such as Objects.equals()
-import java.util.stream.Collectors;      // Turns a stream back into a list
 import models.Event;                     // The event model
 import models.TicketTier;                // The ticket tier model
 
@@ -96,18 +95,26 @@ public class EventManager {
         return null;                                              // Not found
     }
 
-    // All events owned by one host, as a read-only list.
-    // A "stream" processes a list step by step: filter keeps only the matching events,
-    // then collect gathers them into a new list.
+    // All events owned by one host, in a new list.
     public List<Event> getEventsByHostId(String hostId) {
-        return events.stream()
-                .filter(event -> Objects.equals(event.getHostId(), hostId))
-                .collect(Collectors.toUnmodifiableList());
+        List<Event> result = new ArrayList<>();
+        for (Event event : events) {
+            if (Objects.equals(event.getHostId(), hostId)) {   // Keep it if this host owns it
+                result.add(event);
+            }
+        }
+        return result;
     }
 
     // Only events that are not archived, for the guest catalogue.
     public List<Event> getPublicEvents() {
-        return events.stream().filter(event -> !event.isArchived()).collect(Collectors.toUnmodifiableList());
+        List<Event> result = new ArrayList<>();
+        for (Event event : events) {
+            if (!event.isArchived()) {                         // Skip hidden (archived) events
+                result.add(event);
+            }
+        }
+        return result;
     }
 
     // Replaces a stored event with an edited version that has the same ID.
@@ -133,9 +140,10 @@ public class EventManager {
             throw new IllegalArgumentException("Event not found: " + eventId);
         }
         // Make a fresh TicketTier for each old tier. New tiers start with all seats available.
-        List<models.TicketTier> copiedTiers = source.getTicketTiers().stream()
-                .map(tier -> new models.TicketTier(tier.getTierName(), tier.getPrice(), tier.getInitialCapacity()))
-                .collect(Collectors.toCollection(ArrayList::new));
+        List<TicketTier> copiedTiers = new ArrayList<>();
+        for (TicketTier tier : source.getTicketTiers()) {
+            copiedTiers.add(new TicketTier(tier.getTierName(), tier.getPrice(), tier.getInitialCapacity()));
+        }
         // The copy gets a new random ID like "EVT-3F9A21BC" and "(Copy)" added to its title.
         Event copy = new Event("EVT-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
                 source.getTitle() + " (Copy)", source.getDate(), source.getVenue(), copiedTiers, "ON_SALE", hostId);

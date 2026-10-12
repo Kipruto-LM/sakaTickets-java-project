@@ -168,6 +168,10 @@ public class Event {
     // Derived value: worked out from the tiers each time it is asked for, rather than stored.
     // Adds up the available seats of every tier.
     public int getAvailableSeats() {
-        return ticketTiers.stream().mapToInt(TicketTier::getAvailableSeats).sum();
+        int total = 0;
+        for (TicketTier tier : ticketTiers) {      // Add up each tier's free seats
+            total += tier.getAvailableSeats();
+        }
+        return total;
     }
 }
