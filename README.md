@@ -2,6 +2,10 @@
 
 SakaTickets is a modern, feature-rich Java desktop event ticketing application built with **Java Swing**, styled using **FlatLaf**[cite: 16], and designed around a strict Object-Oriented **MVC (Model-View-Controller)** architecture. It supports dual user workflows: public guests who can browse events and seamlessly buy tickets without accounts, and administrative event hosts who manage live inventory, ticket tiers, and revenue analytics.
 
+> **New to the project?**
+> - **[SETUP.md](SETUP.md)** — step-by-step install guide for Windows + VS Code (Git, JDK 25, PostgreSQL, running the app).
+> - **[HOW_IT_WORKS.md](HOW_IT_WORKS.md)** — a beginner-friendly tour of the code and the OOP ideas it uses.
+
 ---
 
 ## 1. System Architecture & Core Modules
@@ -40,7 +44,7 @@ The project is cleanly separated into decoupled packages to ensure maintainabili
 ## 3. Local Setup & Installation Guide
 
 ### Prerequisites
-*   **Java Development Kit (JDK):** Version 17 or higher installed on your machine.
+*   **Java Development Kit (JDK):** Version 25 (the project is set to Java 25 in `pom.xml`).
 *   **Git:** For cloning the source code repository.
 
 ---
@@ -61,7 +65,7 @@ Follow the instructions below to download, configure, and run **SakaTickets** on
 ---
 
 ## Prerequisites
-* **Java Development Kit (JDK):** Version 17 or higher installed on your machine.
+* **Java Development Kit (JDK):** Version 25 (the project is set to Java 25 in `pom.xml`).
 * **Git:** Installed to clone the project repository.
 
 ---
