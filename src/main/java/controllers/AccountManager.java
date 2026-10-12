@@ -6,6 +6,8 @@ import java.sql.Connection;                 // The open link to PostgreSQL
 import java.sql.PreparedStatement;          // A SQL command with "?" blanks we fill in safely
 import java.sql.ResultSet;                  // The rows a SELECT query gives back
 import java.sql.SQLException;               // Error thrown by Java's database classes
+import java.util.ArrayList;                 // A resizable list
+import java.util.List;                      // The general list type
 import java.util.Optional;                  // A box that may or may not hold a User
 import java.util.UUID;                      // Random unique IDs
 import models.User;                         // The host account model
@@ -73,6 +75,36 @@ public class AccountManager {
             return Optional.of(user);
         }
         return Optional.empty();
+    }
+
+    // All host accounts, sorted by username (for the admin's "Host accounts" list).
+    public List<User> getAllHosts() {
+        List<User> hosts = new ArrayList<>();
+        String sql = "SELECT user_id, name, email, username, password_salt, password_hash FROM hosts ORDER BY LOWER(username)";
+        try (PreparedStatement query = connection.prepareStatement(sql); ResultSet row = query.executeQuery()) {
+            while (row.next()) {                                // One User object per row
+                hosts.add(User.fromPasswordHash(row.getString("user_id"), row.getString("name"),
+                        row.getString("email"), row.getString("username"),
+                        row.getString("password_salt"), row.getString("password_hash")));
+            }
+        } catch (SQLException exception) {
+            throw new DatabaseException("Could not load the host accounts", exception);
+        }
+        return hosts;
+    }
+
+    // Deletes a host account. The built-in admin can't be deleted (it is re-created on every start anyway).
+    // The caller should delete the host's events first (EventManager.deleteEventsByHost).
+    public void deleteHost(String userId) {
+        if (User.DEFAULT_ADMIN_ID.equals(userId)) {
+            throw new IllegalArgumentException("The main admin account cannot be deleted.");
+        }
+        try (PreparedStatement delete = connection.prepareStatement("DELETE FROM hosts WHERE user_id = ?")) {
+            delete.setString(1, userId);
+            delete.executeUpdate();
+        } catch (SQLException exception) {
+            throw new DatabaseException("Could not delete the host account", exception);
+        }
     }
 
     // ---- Database code (private: other classes can't call it) ----

@@ -168,6 +168,46 @@ public class EventManager {
         events.add(updatedEvent);                    // Wasn't in our list yet (e.g. added by a teammate)
     }
 
+    // Deletes an event for good, together with its bookings, tiers and custom details.
+    // Runs as a transaction: either everything is deleted, or (if something fails) nothing is.
+    public void deleteEvent(String eventId) {
+        try {
+            connection.setAutoCommit(false);                    // Start the transaction
+            // Bookings first: the database won't delete an event that bookings still point to.
+            try (PreparedStatement delete = connection.prepareStatement("DELETE FROM bookings WHERE event_id = ?")) {
+                delete.setString(1, eventId);
+                delete.executeUpdate();
+            }
+            // Then the event. Its tiers and details go too, because of "ON DELETE CASCADE" in Database.java.
+            try (PreparedStatement delete = connection.prepareStatement("DELETE FROM events WHERE event_id = ?")) {
+                delete.setString(1, eventId);
+                delete.executeUpdate();
+            }
+            connection.commit();                                // Both steps worked: make it permanent
+        } catch (SQLException exception) {
+            try {
+                connection.rollback();                          // Undo whatever part was done
+            } catch (SQLException ignored) {
+                // The original error below explains the problem.
+            }
+            throw new DatabaseException("Could not delete the event", exception);
+        } finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException ignored) {
+                // The next database call will report a broken connection.
+            }
+        }
+        events.removeIf(event -> event.getEventId().equals(eventId));   // Remove it from our list too
+    }
+
+    // Deletes every event owned by one host (used when a host account is deleted).
+    public void deleteEventsByHost(String hostId) {
+        for (Event event : getEventsByHostId(hostId)) {        // getEventsByHostId gives a separate list, so this is safe
+            deleteEvent(event.getEventId());
+        }
+    }
+
     // Archives (hides) or restores an event.
     public void setArchived(String eventId, boolean archived) {
         Event event = getEventById(eventId);
@@ -373,7 +413,7 @@ public class EventManager {
                 new TicketTier("Early Bird", roundPrice(regularPrice * 0.7), earlyBirdSeats),   // 30% cheaper
                 new TicketTier("Regular", regularPrice, capacity - earlyBirdSeats - vipSeats),
                 new TicketTier("VIP", roundPrice(regularPrice * 2.5), vipSeats));               // 2.5x the price
-        Event event = new Event(eventId, title, date, venue, tiers, "ON_SALE", "admin-001");
+        Event event = new Event(eventId, title, date, venue, tiers, "ON_SALE", models.User.DEFAULT_ADMIN_ID);
         event.setCategory(category);
         event.setBannerImagePath(imagePath);
         return event;

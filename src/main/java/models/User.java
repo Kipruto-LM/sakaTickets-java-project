@@ -27,6 +27,7 @@ import javax.crypto.spec.PBEKeySpec;          // Bundles the password, salt and 
 public class User {
     // Class-wide constants ("static final"): shared by every User and never changed.
     // By convention, constant names are written in CAPITAL_LETTERS.
+    public static final String DEFAULT_ADMIN_ID = "admin-001";          // Built-in host account ID
     public static final String DEFAULT_ADMIN_USERNAME = "Talel";        // Built-in host account name
     public static final String DEFAULT_ADMIN_PASSWORD = "admin123";     // Its starting password
     private static final int PASSWORD_ITERATIONS = 120_000;  // How many times to repeat hashing (slow = harder to crack)
@@ -56,7 +57,7 @@ public class User {
     // Static factory method: called on the class (User.defaultAdmin()), not on an object.
     // Builds the built-in host account used for the sample events.
     public static User defaultAdmin() {
-        return new User("admin-001", DEFAULT_ADMIN_USERNAME, "admin@sakatickets.local",
+        return new User(DEFAULT_ADMIN_ID, DEFAULT_ADMIN_USERNAME, "admin@sakatickets.local",
                 DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD);
     }
 
