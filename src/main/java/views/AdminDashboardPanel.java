@@ -455,18 +455,22 @@ public class AdminDashboardPanel extends JPanel {
         return panel;
     }
 
+    // Builds the Manage Events page: filters on top, then one of three "cards" underneath:
+    //   "empty"       - the host has no events yet (with a create button)
+    //   "filtered"    - no events match the filters
+    //   "eventsTable" - a header row plus one row per event
     private JPanel buildManageEventsPage() {
         JPanel page = new JPanel(new BorderLayout(0, 12));
         page.setOpaque(false);
-        page.add(buildFilters(), BorderLayout.NORTH);
-        eventList.setLayout(new javax.swing.BoxLayout(eventList, javax.swing.BoxLayout.Y_AXIS));
+        page.add(buildFilters(), BorderLayout.NORTH);  // Search box and filters across the top
+        eventList.setLayout(new javax.swing.BoxLayout(eventList, javax.swing.BoxLayout.Y_AXIS));  // Rows stacked top to bottom
         eventList.setBackground(new Color(0x17, 0x1B, 0x24));
         eventList.setBorder(new EmptyBorder(2, 2, 2, 2));
-        JScrollPane scroll = new JScrollPane(eventList);
+        JScrollPane scroll = new JScrollPane(eventList);  // The rows scroll if there are many
         scroll.setBorder(BorderFactory.createLineBorder(new Color(0x2A, 0x30, 0x44)));
         scroll.getViewport().setBackground(new Color(0x17, 0x1B, 0x24));
         scroll.getVerticalScrollBar().setUnitIncrement(16);
-        JPanel empty = new JPanel(new java.awt.GridBagLayout());
+        JPanel empty = new JPanel(new java.awt.GridBagLayout());  // Card 1: no events yet (GridBagLayout centres the message)
         empty.setBackground(new Color(0x17, 0x1B, 0x24));
         JPanel message = new JPanel();
         message.setOpaque(false);
@@ -480,31 +484,33 @@ public class AdminDashboardPanel extends JPanel {
         JButton create = new JButton("+ Create Your First Event");
         ViewStyles.stylePrimaryButton(create);
         create.setAlignmentX(CENTER_ALIGNMENT);
-        create.addActionListener(action -> startNewEvent());
+        create.addActionListener(action -> startNewEvent());  // Opens an empty editor
         message.add(emptyTitle);
         message.add(javax.swing.Box.createVerticalStrut(8));
         message.add(hint);
         message.add(javax.swing.Box.createVerticalStrut(20));
         message.add(create);
         empty.add(message);
-        eventState.add(empty, "empty");
+        eventState.add(empty, "empty");  // Register card 1 under the name "empty"
 
-        JPanel filtered = new JPanel(new GridBagLayout());
+        JPanel filtered = new JPanel(new GridBagLayout());  // Card 2: nothing matches the filters
         filtered.setBackground(new Color(0x17, 0x1B, 0x24));
         JLabel filteredMessage = new JLabel("No events match these filters.");
         ViewStyles.styleSecondaryText(filteredMessage, 14f);
         filtered.add(filteredMessage);
-        eventState.add(filtered, "filtered");
+        eventState.add(filtered, "filtered");  // Register card 2
 
-        JPanel table = new JPanel(new BorderLayout());
+        JPanel table = new JPanel(new BorderLayout());  // Card 3: the real list
         table.setBackground(new Color(0x17, 0x1B, 0x24));
-        table.add(buildInventoryHeader(), BorderLayout.NORTH);
+        table.add(buildInventoryHeader(), BorderLayout.NORTH);  // Column titles
         table.add(scroll, BorderLayout.CENTER);
-        eventState.add(table, "eventsTable");
+        eventState.add(table, "eventsTable");  // Register card 3
         page.add(eventState, BorderLayout.CENTER);
         return page;
     }
 
+    // Builds the filter bar. Pressing Enter in the search box, changing the status, ticking
+    // "Show archived" or clicking "Apply filters" all call refreshEvents() to redo the list.
     private JPanel buildFilters() {
         ViewStyles.styleInput(searchField);
         ViewStyles.styleInput(dateFromFilter);
@@ -529,10 +535,13 @@ public class AdminDashboardPanel extends JPanel {
         return filters;
     }
 
+    // Builds the row of column titles above the event list.
     private JPanel buildInventoryHeader() {
         JPanel header = new JPanel(new GridBagLayout());
         header.setBackground(new Color(0x17, 0x1B, 0x24));
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(0x2A, 0x30, 0x44)));
+        // Column titles and how much of the width each column gets (the weights add up to 1).
+        // The same weights are used in createInventoryRow() so the rows line up with these titles.
         String[] labels = {"EVENT NAME", "DATE", "CAPACITY", "SOLD", "REMAINING", "STATUS", "ACTION"};
         double[] weights = {.27, .11, .09, .16, .09, .10, .18};
         for (int index = 0; index < labels.length; index++) {
@@ -546,14 +555,16 @@ public class AdminDashboardPanel extends JPanel {
         return header;
     }
 
+    // Builds one row of the event list: name/category, date, capacity, sold (with a progress bar),
+    // seats remaining, status and action buttons.
     private JPanel createInventoryRow(Event event) {
         JPanel row = new JPanel(new GridBagLayout());
         row.setBackground(new Color(0x17, 0x1B, 0x24));
         row.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(0x1E, 0x24, 0x33)));
-        int capacity = event.getTicketTiers().stream().mapToInt(TicketTier::getInitialCapacity).sum();
+        int capacity = event.getTicketTiers().stream().mapToInt(TicketTier::getInitialCapacity).sum();  // Total seats across all tiers
         int sold = orderManager.calculateTotalTicketsSold(event.getEventId());
-        int remaining = Math.max(0, capacity - sold);
-        int percentage = capacity == 0 ? 0 : Math.min(100, (int) Math.round(sold * 100.0 / capacity));
+        int remaining = Math.max(0, capacity - sold);  // Never below 0
+        int percentage = capacity == 0 ? 0 : Math.min(100, (int) Math.round(sold * 100.0 / capacity));  // Percent sold, 0-100
 
         JPanel eventInfo = new JPanel(new GridLayout(2, 1, 0, 3));
         eventInfo.setOpaque(false);
@@ -572,13 +583,13 @@ public class AdminDashboardPanel extends JPanel {
         JPanel sales = new JPanel(new GridLayout(2, 1, 0, 3));
         sales.setOpaque(false);
         sales.add(monoLabel(Integer.toString(sold), new Color(0xF0, 0xF4, 0xFF)));
-        JProgressBar progress = new JProgressBar(0, 100);
+        JProgressBar progress = new JProgressBar(0, 100);  // A bar that goes from 0 to 100
         progress.setValue(percentage);
         progress.setStringPainted(false);
         progress.setPreferredSize(new Dimension(90, 4));
         progress.setBorderPainted(false);
         progress.setBackground(new Color(0x2A, 0x30, 0x44));
-        progress.setForeground(percentage >= 100 ? new Color(0xFF, 0x4D, 0x6A) : new Color(0x00, 0xB4, 0xFF));
+        progress.setForeground(percentage >= 100 ? new Color(0xFF, 0x4D, 0x6A) : new Color(0x00, 0xB4, 0xFF));  // Red when full, blue otherwise
         sales.add(progress);
         row.add(sales, columnConstraints(3, .16));
         row.add(monoLabel(Integer.toString(remaining), remaining == 0
@@ -589,6 +600,8 @@ public class AdminDashboardPanel extends JPanel {
         status.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 9f));
         row.add(status, columnConstraints(5, .10));
         row.add(buildRowActions(event), columnConstraints(6, .18));
+        // Give every cell in the row the same padding. "instanceof ... swingComponent" checks the
+        // type and gives a variable of that type in one step.
         for (java.awt.Component component : row.getComponents()) {
             if (component instanceof javax.swing.JComponent swingComponent) {
                 swingComponent.setBorder(new EmptyBorder(10, 10, 10, 6));
@@ -597,6 +610,8 @@ public class AdminDashboardPanel extends JPanel {
         return row;
     }
 
+    // Builds the action buttons at the end of a row: Insights, Edit, and a "···" button that
+    // opens a pop-up menu with more options. Each one calls a method with this row's event.
     private JPanel buildRowActions(Event event) {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
         actions.setOpaque(false);
@@ -621,13 +636,14 @@ public class AdminDashboardPanel extends JPanel {
         menu.add(exportItem);
         menu.add(duplicateItem);
         menu.add(archiveItem);
-        more.addActionListener(action -> menu.show(more, 0, more.getHeight()));
+        more.addActionListener(action -> menu.show(more, 0, more.getHeight()));  // Show the menu just below the "···" button
         actions.add(insights);
         actions.add(edit);
         actions.add(more);
         return actions;
     }
 
+    // Layout rules for one column of a row: which column, its share of the width, stretch sideways, stick left.
     private GridBagConstraints columnConstraints(int column, double weight) {
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = column;
@@ -637,6 +653,7 @@ public class AdminDashboardPanel extends JPanel {
         return constraints;
     }
 
+    // A small label in the monospace font (used for numbers and dates in the rows).
     private JLabel monoLabel(String text, Color color) {
         JLabel label = new JLabel(text);
         label.setForeground(color);
@@ -644,6 +661,7 @@ public class AdminDashboardPanel extends JPanel {
         return label;
     }
 
+    // Turns a status code into display text, e.g. "ON_SALE" -> "ON SALE".
     private String statusText(String status) {
         return switch (status) {
             case "ON_SALE" -> "ON SALE";
@@ -653,9 +671,10 @@ public class AdminDashboardPanel extends JPanel {
         };
     }
 
+    // Recalculates the three Overview stat cards from all the host's active (not archived) events.
     private void updateSummary(List<Event> events) {
         int capacity = events.stream().filter(event -> !event.isArchived())
-                .flatMap(event -> event.getTicketTiers().stream())
+                .flatMap(event -> event.getTicketTiers().stream())  // flatMap: turn each event into its tiers, all in one stream
                 .mapToInt(TicketTier::getInitialCapacity).sum();
         int sold = events.stream().filter(event -> !event.isArchived())
                 .mapToInt(event -> orderManager.calculateTotalTicketsSold(event.getEventId())).sum();
@@ -664,10 +683,11 @@ public class AdminDashboardPanel extends JPanel {
         capacityValue.setText(String.format("%,d", capacity));
         soldValue.setText(String.format("%,d", sold));
         revenueValue.setText(String.format("KES %,.0f", revenue));
-        soldHint.setText((capacity == 0 ? 0 : Math.round(sold * 100.0 / capacity)) + "% sell-through");
+        soldHint.setText((capacity == 0 ? 0 : Math.round(sold * 100.0 / capacity)) + "% sell-through");  // e.g. "56% sell-through"
         capacityHint.setText(events.stream().filter(event -> !event.isArchived()).count() + " active events");
     }
 
+    // Builds the Settings page: who is signed in, their account ID and the theme.
     private JPanel buildSettingsPage(String name) {
         JPanel page = new JPanel(new BorderLayout());
         page.setOpaque(false);
@@ -685,8 +705,10 @@ public class AdminDashboardPanel extends JPanel {
         return page;
     }
 
+    // Switches to a page by name, and updates the top bar and the sidebar highlight to match.
     private void showPage(String page) {
-        activePage = page;
+        activePage = page;  // Remember which page is showing
+        // Pick the title for this page. A "switch expression" returns a value for each case.
         String title = switch (page) {
             case "Overview" -> "Overview";
             case "Settings" -> "Settings";
@@ -702,7 +724,9 @@ public class AdminDashboardPanel extends JPanel {
             case "Insights" -> "Sales, tiers and bookings for one event";
             default -> "Manage and monitor all active events";
         });
-        createEventButton.setText("Editor".equals(page) ? "Back to events" : "+  Create New Event");
+        createEventButton.setText("Editor".equals(page) ? "Back to events" : "+  Create New Event");  // Same button, different job in the editor
+        // Highlight the sidebar button for this page. The Editor and Insights pages belong under
+        // "Manage Events", so that button stays highlighted for them too.
         for (Map.Entry<String, JButton> entry : navButtons.entrySet()) {
             boolean selected = entry.getKey().equals(page)
                     || ("Editor".equals(page) || "Insights".equals(page)) && "Manage Events".equals(entry.getKey());
@@ -714,7 +738,7 @@ public class AdminDashboardPanel extends JPanel {
                             selected ? new Color(0x00, 0xB4, 0xFF) : new Color(0x17, 0x1B, 0x24)),
                     new EmptyBorder(11, 11, 11, 8)));
         }
-        if (pages.getComponentCount() > 0) {
+        if (pages.getComponentCount() > 0) {  // Only once the pages exist
             pageLayout.show(pages, page);
         }
         revalidate();
@@ -730,12 +754,13 @@ public class AdminDashboardPanel extends JPanel {
     // Overview charts across all of this host's active events. Rebuilt on every refresh so they
     // always match the latest sales.
     private void rebuildOverviewCharts(List<Event> allEvents) {
-        overviewCharts.removeAll();
-        List<Event> active = allEvents.stream().filter(event -> !event.isArchived()).toList();
+        overviewCharts.removeAll();  // Clear the old charts
+        List<Event> active = allEvents.stream().filter(event -> !event.isArchived()).toList();  // Skip archived events
         if (active.isEmpty()) {
             overviewCharts.revalidate();
             return;
         }
+        // Chart 1: revenue per event, as one-colour bars. Two matching arrays: names[i] and revenue[i].
         String[] names = active.stream().map(Event::getTitle).toArray(String[]::new);
         double[] revenue = active.stream()
                 .mapToDouble(event -> orderManager.calculateEventRevenue(event.getEventId())).toArray();
@@ -744,15 +769,17 @@ public class AdminDashboardPanel extends JPanel {
                 i -> String.format("%s: KES %,.0f from %,d tickets. Click for insights.", names[i], revenue[i],
                         orderManager.calculateTotalTicketsSold(active.get(i).getEventId())),
                 ChartPanel.SERIES[0]);
-        revenueChart.setClickAction(i -> showInsights(active.get(i)));
+        revenueChart.setClickAction(i -> showInsights(active.get(i)));  // Clicking bar i opens that event's insights
 
+        // Chart 2: tickets sold per day across ALL active events, added together day by day.
         int days = 30;
         double[] daily = new double[days];
         for (Event event : active) {
             int[] eventDaily = orderManager.getDailyTicketSales(event.getEventId(), days);
-            for (int i = 0; i < days; i++) daily[i] += eventDaily[i];
+            for (int i = 0; i < days; i++) daily[i] += eventDaily[i];  // Add this event's day i to the total for day i
         }
         String[] labels = new String[days];
+        // Date labels like "3 Oct" for each of the 30 days, oldest first.
         java.time.format.DateTimeFormatter format =
                 java.time.format.DateTimeFormatter.ofPattern("d MMM", java.util.Locale.ENGLISH);
         for (int i = 0; i < days; i++) labels[i] = LocalDate.now().minusDays(days - 1L - i).format(format);
@@ -764,6 +791,7 @@ public class AdminDashboardPanel extends JPanel {
                 "Click an event to open its insights", revenueChart);
         JPanel dailyCard = EventAnalyticsPanel.card("Daily ticket sales",
                 "All active events, last 30 days", dailyChart);
+        // Place the two cards side by side: the revenue card gets 1 share of the width, the daily chart 1.2.
         GridBagConstraints left = new GridBagConstraints();
         left.gridx = 0;
         left.weightx = 1;
@@ -782,6 +810,8 @@ public class AdminDashboardPanel extends JPanel {
         overviewCharts.repaint();
     }
 
+    // True if the event's date is inside the From/To filter boxes (empty boxes mean no limit).
+    // If any date can't be read, the event is hidden.
     private boolean matchesDateRange(Event event) {
         try {
             LocalDate eventDate = LocalDate.parse(event.getDate());
@@ -794,6 +824,7 @@ public class AdminDashboardPanel extends JPanel {
         }
     }
 
+    // A compact secondary button, used in the rows and sidebar.
     private JButton smallButton(String text) {
         JButton button = new JButton(text);
         ViewStyles.styleSecondaryButton(button);
