@@ -9,8 +9,6 @@ import java.awt.GridLayout;                 // Layout with equal-sized cells
 import java.awt.GridBagConstraints;         // Position/size rules for one item in a GridBagLayout
 import java.awt.GridBagLayout;              // A flexible grid layout (used for the forms)
 import java.awt.Insets;                     // Spacing around an item
-import database.DatabaseException;          // Thrown if saving to the database fails
-import java.util.Optional;                  // A box that may or may not hold a User
 import java.util.function.Consumer;         // An object holding an action that takes one value
 import javax.swing.BorderFactory;           // Helper for making borders
 import javax.swing.JButton;                 // A clickable button
@@ -238,15 +236,15 @@ public class AdminLoginPanel extends JPanel {
         }
     }
 
-    // Asks the controller to check the login. Optional<User> holds a User only when the login works.
+    // Asks the controller to check the login. It gives back the User, or null if the login is wrong.
     private void authenticate() {
         // Password boxes give back char[] (an array of characters); new String(...) turns it into normal text.
         String password = new String(loginPassword.getPassword());
-        Optional<User> user = accountManager.authenticate(loginUsername.getText(), password);
-        if (user.isPresent()) {                             // Login worked
+        User user = accountManager.login(loginUsername.getText(), password);
+        if (user != null) {                                 // Login worked
             loginPassword.setText("");                      // Clear the password box
             loginMessage.setText(" ");                      // Clear any old error
-            loginSuccess.accept(user.get());                // Tell MainFrame: open the dashboard
+            loginSuccess.accept(user);                      // Tell MainFrame: open the dashboard
         } else {                                            // Wrong username or password
             loginMessage.setText("Username or password is incorrect.");
             loginPassword.setText("");
@@ -268,9 +266,8 @@ public class AdminLoginPanel extends JPanel {
             clearRegistrationForm();
             registrationMessage.setText(" ");
             loginSuccess.accept(user);                          // New hosts go straight to their dashboard
-        } catch (IllegalArgumentException | DatabaseException exception) {
-            // Either a rule was broken (e.g. "Enter a valid email address.") or saving failed:
-            // show the exception's message under the form.
+        } catch (IllegalArgumentException exception) {
+            // A rule was broken (e.g. "Enter a valid email address."): show the message under the form.
             registrationMessage.setText(exception.getMessage());
         }
     }

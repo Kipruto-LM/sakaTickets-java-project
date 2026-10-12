@@ -1,28 +1,26 @@
 // This file belongs to the "controllers" package: the classes that hold the app's logic (the C in MVC).
 package controllers;
 
-import database.DatabaseException;          // Our own error type for database problems
 import java.sql.Connection;                 // The open link to PostgreSQL
-import java.sql.PreparedStatement;          // A SQL command with "?" blanks we fill in safely
+import java.sql.PreparedStatement;          // A SQL command with "?" blanks we fill in
 import java.sql.ResultSet;                  // The rows a SELECT query gives back
-import java.sql.SQLException;               // Error thrown by Java's database classes
+import java.sql.SQLException;               // The error Java's database classes throw
 import java.util.ArrayList;                 // A resizable list
 import java.util.List;                      // The general list type
-import java.util.Optional;                  // A box that may or may not hold a User
 import java.util.UUID;                      // Random unique IDs
 import models.User;                         // The host account model
 
 /**
- * Controller for host accounts: signing up and signing in. Accounts are stored in the
- * "hosts" table in PostgreSQL.
+ * Controller for host accounts: signing up, signing in, listing and deleting.
+ * Accounts are stored in the "hosts" table in PostgreSQL.
+ *
+ * About "try / catch": Java makes us handle the SQLException that database commands can throw.
+ * Each method does that once, by turning it into a RuntimeException with a clear message.
  *
  * OOP ideas shown here:
- * - MVC (Model-View-Controller): this is the "Controller". The login screen (View) never
- *   touches {@link User} objects' passwords (Model) or the database directly. It asks this class.
- * - Abstraction: callers just call register() or authenticate(). How accounts are stored (SQL)
- *   is hidden inside this class.
- * - Dependency injection: the database Connection is handed in through the constructor,
- *   so this class doesn't need to know how to open one.
+ * - MVC: this is the "Controller". The screens ask this class instead of using the database.
+ * - Abstraction: callers just call register(), login() and so on. The SQL is hidden in here.
+ * - Dependency injection: the database Connection is handed in through the constructor.
  */
 public class AccountManager {
     private final Connection connection;     // The shared database connection
@@ -35,60 +33,43 @@ public class AccountManager {
         }
     }
 
-    // Checks the sign-up details, creates a new User object, and saves it to the database.
-    // Bad input is reported by throwing an exception with a friendly message.
+    // Checks the sign-up details, then creates and saves a new User.
+    // If something is wrong, it throws an exception whose message is shown on the form.
     public User register(String name, String email, String username, String password) {
-        // Each field must be filled in; requireText also trims extra spaces.
-        String cleanName = requireText(name, "Name");
-        String cleanEmail = requireText(email, "Email");
-        String cleanUsername = requireText(username, "Username");
-        // Rule 1: usernames must be unique.
-        if (findByUsername(cleanUsername) != null) {
-            throw new IllegalArgumentException("That username is already registered.");
+        if (name.isBlank() || email.isBlank() || username.isBlank() || password.isBlank()) {
+            throw new IllegalArgumentException("Please fill in every field.");
         }
-        // Rule 2: the email must look like something@something.something (a "regular expression").
-        if (!cleanEmail.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+        if (!email.contains("@")) {
             throw new IllegalArgumentException("Enter a valid email address.");
         }
-        // Rule 3: username is 3-32 letters, digits, underscores, dots or dashes.
-        if (!cleanUsername.matches("[A-Za-z0-9_.-]{3,32}")) {
-            throw new IllegalArgumentException("Username must be 3-32 characters using letters, numbers, '.', '_' or '-'.");
+        if (findByUsername(username) != null) {
+            throw new IllegalArgumentException("That username is already registered.");
         }
-        // Rule 4: password must be at least 8 characters.
-        if (password == null || password.length() < 8) {
-            throw new IllegalArgumentException("Password must be at least 8 characters.");
-        }
-        // All checks passed: create the User (which hashes the password) and save it.
-        User user = new User(UUID.randomUUID().toString(), cleanName, cleanEmail, cleanUsername, password);
+        User user = new User(UUID.randomUUID().toString(), name.trim(), email.trim(), username.trim(), password);
         saveNewUser(user);
         return user;
     }
 
-    // Finds the user, then asks that User object to check its own password (delegation).
-    // Optional means "maybe a User": empty when the login fails.
-    public Optional<User> authenticate(String username, String password) {
-        if (username == null || password == null) {
-            return Optional.empty();
-        }
+    // Returns the User if the username and password are right, or null if they aren't.
+    public User login(String username, String password) {
         User user = findByUsername(username.trim());
-        if (user != null && user.authenticate(password)) {
-            return Optional.of(user);
+        if (user != null && user.checkPassword(password)) {
+            return user;
         }
-        return Optional.empty();
+        return null;
     }
 
     // All host accounts, sorted by username (for the admin's "Host accounts" list).
     public List<User> getAllHosts() {
         List<User> hosts = new ArrayList<>();
-        String sql = "SELECT user_id, name, email, username, password_salt, password_hash FROM hosts ORDER BY LOWER(username)";
-        try (PreparedStatement query = connection.prepareStatement(sql); ResultSet row = query.executeQuery()) {
-            while (row.next()) {                                // One User object per row
-                hosts.add(User.fromPasswordHash(row.getString("user_id"), row.getString("name"),
-                        row.getString("email"), row.getString("username"),
-                        row.getString("password_salt"), row.getString("password_hash")));
+        try {
+            PreparedStatement query = connection.prepareStatement("SELECT * FROM hosts ORDER BY username");
+            ResultSet row = query.executeQuery();
+            while (row.next()) {                                // One loop per row
+                hosts.add(userFromRow(row));
             }
         } catch (SQLException exception) {
-            throw new DatabaseException("Could not load the host accounts", exception);
+            throw new RuntimeException("Could not load the host accounts: " + exception.getMessage());
         }
         return hosts;
     }
@@ -96,63 +77,57 @@ public class AccountManager {
     // Deletes a host account. The built-in admin can't be deleted (it is re-created on every start anyway).
     // The caller should delete the host's events first (EventManager.deleteEventsByHost).
     public void deleteHost(String userId) {
-        if (User.DEFAULT_ADMIN_ID.equals(userId)) {
+        if (userId.equals(User.DEFAULT_ADMIN_ID)) {
             throw new IllegalArgumentException("The main admin account cannot be deleted.");
         }
-        try (PreparedStatement delete = connection.prepareStatement("DELETE FROM hosts WHERE user_id = ?")) {
-            delete.setString(1, userId);
+        try {
+            PreparedStatement delete = connection.prepareStatement("DELETE FROM hosts WHERE user_id = ?");
+            delete.setString(1, userId);                        // Fill in blank number 1
             delete.executeUpdate();
         } catch (SQLException exception) {
-            throw new DatabaseException("Could not delete the host account", exception);
+            throw new RuntimeException("Could not delete the host account: " + exception.getMessage());
         }
     }
 
-    // ---- Database code (private: other classes can't call it) ----
+    // ---- Private helpers ----
 
-    // Looks up one host by username (ignoring capitals). Returns null if there is none.
+    // Looks up one host by username (ignoring capital letters). Returns null if there is none.
     private User findByUsername(String username) {
-        // "?" is a blank that setString() fills in. Using blanks (never gluing text into SQL)
-        // protects against "SQL injection", where someone types SQL into a form field.
-        String sql = "SELECT user_id, name, email, username, password_salt, password_hash "
-                + "FROM hosts WHERE LOWER(username) = LOWER(?)";
-        try (PreparedStatement query = connection.prepareStatement(sql)) {
-            query.setString(1, username);                       // Fill blank number 1
-            try (ResultSet row = query.executeQuery()) {
-                if (!row.next()) {                              // next() moves to the first row; false = no rows
-                    return null;
-                }
-                // Rebuild the User from the row (the password stays hashed).
-                return User.fromPasswordHash(row.getString("user_id"), row.getString("name"),
-                        row.getString("email"), row.getString("username"),
-                        row.getString("password_salt"), row.getString("password_hash"));
+        try {
+            // "?" is a blank filled in by setString(). Using blanks means whatever a person types
+            // is always treated as data, never as part of the SQL command.
+            PreparedStatement query = connection.prepareStatement(
+                    "SELECT * FROM hosts WHERE LOWER(username) = LOWER(?)");
+            query.setString(1, username);
+            ResultSet row = query.executeQuery();
+            if (row.next()) {                                   // next() is false when there are no rows
+                return userFromRow(row);
             }
+            return null;
         } catch (SQLException exception) {
-            throw new DatabaseException("Could not look up the host account", exception);
+            throw new RuntimeException("Could not look up the host account: " + exception.getMessage());
         }
     }
 
-    // Inserts a new host row.
+    // Saves a new host row.
     private void saveNewUser(User user) {
-        String sql = "INSERT INTO hosts (user_id, name, email, username, password_salt, password_hash) "
-                + "VALUES (?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement insert = connection.prepareStatement(sql)) {
+        try {
+            PreparedStatement insert = connection.prepareStatement(
+                    "INSERT INTO hosts (user_id, name, email, username, password) VALUES (?, ?, ?, ?, ?)");
             insert.setString(1, user.getUserId());
             insert.setString(2, user.getName());
             insert.setString(3, user.getEmail());
             insert.setString(4, user.getUsername());
-            insert.setString(5, user.getPasswordSalt());
-            insert.setString(6, user.getPasswordHash());
-            insert.executeUpdate();                              // Runs the INSERT
+            insert.setString(5, user.getPassword());
+            insert.executeUpdate();                             // Runs the INSERT
         } catch (SQLException exception) {
-            throw new DatabaseException("Could not save the host account", exception);
+            throw new RuntimeException("Could not save the host account: " + exception.getMessage());
         }
     }
 
-    // Checks a form value isn't empty. Returns it trimmed, or throws an error naming the field.
-    private static String requireText(String value, String label) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(label + " is required.");
-        }
-        return value.trim();
+    // Turns the current database row into a User object.
+    private User userFromRow(ResultSet row) throws SQLException {
+        return new User(row.getString("user_id"), row.getString("name"), row.getString("email"),
+                row.getString("username"), row.getString("password"));
     }
 }

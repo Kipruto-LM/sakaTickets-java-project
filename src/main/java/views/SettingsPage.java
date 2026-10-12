@@ -14,9 +14,7 @@ import javax.swing.JComponent;              // The parent class of all Swing com
 import javax.swing.JLabel;                  // A piece of text
 import javax.swing.JOptionPane;             // Pop-up message and question boxes
 import javax.swing.JPanel;                  // A container
-import javax.swing.JPasswordField;          // A text box that hides what you type
 import javax.swing.JScrollPane;             // Adds scroll bars
-import models.Event;                        // An event
 import models.User;                         // A host account
 
 /**
@@ -141,10 +139,9 @@ class SettingsPage extends JPanel {
 
     // The admin deletes another host, after confirming.
     private void deleteOtherHost(User account) {
-        String question = "Delete the host account \"" + account.getUsername() + "\"?\n" + describeLosses(account)
-                + "\nThis cannot be undone.";
-        int answer = JOptionPane.showConfirmDialog(this, question, "Delete host",
-                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        int answer = JOptionPane.showConfirmDialog(this,
+                "Delete " + account.getUsername() + "? Their events and bookings will be deleted too.",
+                "Delete host", JOptionPane.YES_NO_OPTION);
         if (answer == JOptionPane.YES_OPTION) {
             deleteHostAndEvents(account);
             changedAction.run();                // Refresh the dashboard's numbers
@@ -152,27 +149,15 @@ class SettingsPage extends JPanel {
         }
     }
 
-    // A host deletes their own account. They must type their password first, as a safety check.
+    // A host deletes their own account, after a simple Yes/No question.
     private void deleteOwnAccount() {
-        JPasswordField passwordBox = new JPasswordField(16);
-        // A message box can show any component; here it shows a label and a password box.
-        Object[] message = {"This deletes your account.\n" + describeLosses(host)
-                + "\nThis cannot be undone. Enter your password to confirm:", passwordBox};
-        int answer = JOptionPane.showConfirmDialog(this, message, "Delete my account",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
-        if (answer != JOptionPane.OK_OPTION) {
-            return;                                                     // Cancelled
+        int answer = JOptionPane.showConfirmDialog(this,
+                "Delete your account? Your events and their bookings will be deleted too.",
+                "Delete my account", JOptionPane.YES_NO_OPTION);
+        if (answer == JOptionPane.YES_OPTION) {
+            deleteHostAndEvents(host);
+            logoutAction.run();                                         // Back to the welcome page
         }
-        String password = new String(passwordBox.getPassword());
-        if (accountManager.authenticate(host.getUsername(), password).isEmpty()) {
-            JOptionPane.showMessageDialog(this, "That password is incorrect. Your account was not deleted.",
-                    "Delete my account", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        deleteHostAndEvents(host);
-        JOptionPane.showMessageDialog(this, "Your account has been deleted.", "Account deleted",
-                JOptionPane.INFORMATION_MESSAGE);
-        logoutAction.run();                                             // Back to the welcome page
     }
 
     // The actual deleting, in the right order: events (and their bookings) first, then the account.
@@ -180,18 +165,6 @@ class SettingsPage extends JPanel {
         eventManager.deleteEventsByHost(account.getUserId());
         orderManager.reload();                  // Our list of bookings is now out of date
         accountManager.deleteHost(account.getUserId());
-    }
-
-    // Builds a line like "Their 3 events and 41 bookings will be deleted too."
-    private String describeLosses(User account) {
-        int events = 0;
-        int bookings = 0;
-        for (Event event : eventManager.getEventsByHostId(account.getUserId())) {
-            events++;
-            bookings += orderManager.getBookingsByEvent(event.getEventId()).size();
-        }
-        return events + (events == 1 ? " event" : " events") + " and " + bookings
-                + (bookings == 1 ? " booking" : " bookings") + " will be deleted too.";
     }
 
     // ---- Small helpers ----

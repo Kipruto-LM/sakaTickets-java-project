@@ -19,7 +19,7 @@ import java.util.Properties;           // Reads "key=value" files such as db.pro
  * keeps their own password out of git.
  *
  * The tables:
- *   hosts          - host accounts (password stored as salt + hash, never plain text)
+ *   hosts          - host accounts
  *   events         - one row per event
  *   ticket_tiers   - the tiers of each event (Early Bird, Regular, VIP, ...)
  *   event_details  - the host's custom details for each event ("Dress code" -> "Smart casual")
@@ -65,12 +65,11 @@ public final class Database {
             // Host accounts. TEXT = any length of text. PRIMARY KEY = unique ID for each row.
             statement.execute("""
                     CREATE TABLE IF NOT EXISTS hosts (
-                        user_id       TEXT PRIMARY KEY,
-                        name          TEXT NOT NULL,
-                        email         TEXT NOT NULL,
-                        username      TEXT NOT NULL,
-                        password_salt TEXT NOT NULL,
-                        password_hash TEXT NOT NULL
+                        user_id  TEXT PRIMARY KEY,
+                        name     TEXT NOT NULL,
+                        email    TEXT NOT NULL,
+                        username TEXT NOT NULL,
+                        password TEXT NOT NULL
                     )""");
             // Usernames must be unique, ignoring capitals ("Talel" and "talel" are the same).
             statement.execute("CREATE UNIQUE INDEX IF NOT EXISTS hosts_username_key ON hosts (LOWER(username))");
