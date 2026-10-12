@@ -42,7 +42,7 @@ import models.TicketTier;                     // A ticket price level
 
 /**
  * The dashboard's "Manage Events" page: a filter bar and one row per event, with buttons to
- * open insights, edit, view attendees, export a CSV, duplicate or archive.
+ * open insights, edit, view attendees, export a CSV, duplicate, archive or delete.
  *
  * Under the filter bar, a CardLayout shows one of three "cards":
  *   "empty"    - the host has no events yet (with a button to create one)
@@ -274,10 +274,14 @@ class EventListPage extends JPanel {
         duplicate.addActionListener(action -> duplicateEvent(event));
         JMenuItem archive = new JMenuItem(event.isArchived() ? "Restore event" : "Archive event");
         archive.addActionListener(action -> toggleArchive(event));
+        JMenuItem delete = new JMenuItem("Delete event");
+        delete.addActionListener(action -> deleteEvent(event));
         menu.add(attendees);
         menu.add(export);
         menu.add(duplicate);
         menu.add(archive);
+        menu.addSeparator();                       // A thin line before the dangerous option
+        menu.add(delete);
         JButton more = ViewStyles.smallButton("···");
         more.addActionListener(action -> menu.show(more, 0, more.getHeight()));   // Menu appears under the button
 
@@ -355,6 +359,24 @@ class EventListPage extends JPanel {
         if (answer == JOptionPane.YES_OPTION) {
             eventManager.setArchived(event.getEventId(), archive);
             changedAction.run();
+        }
+    }
+
+    // Deletes an event for good, after the host confirms. Its bookings are deleted too,
+    // so the warning says how many there are. (Archive is the safer choice: it can be undone.)
+    private void deleteEvent(Event event) {
+        int bookings = orderManager.getBookingsByEvent(event.getEventId()).size();
+        String question = "Delete \"" + event.getTitle() + "\" for good?";
+        if (bookings > 0) {
+            question += "\nIts " + bookings + " bookings will be deleted too. This cannot be undone."
+                    + "\n(Tip: use \"Archive event\" instead to just hide it.)";
+        }
+        int answer = JOptionPane.showConfirmDialog(this, question, "Delete event",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (answer == JOptionPane.YES_OPTION) {
+            eventManager.deleteEvent(event.getEventId());   // Removes it from the database
+            orderManager.reload();                           // Our list of bookings is now out of date
+            changedAction.run();                             // Refresh the dashboard
         }
     }
 
