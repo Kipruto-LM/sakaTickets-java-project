@@ -1211,22 +1211,26 @@ public class AdminDashboardPanel extends JPanel {
         }
     }
 
+    // Runs when "Add Tier" / "Update Tier" is clicked. Checks the inputs, then either adds a new
+    // tier or replaces the selected one. Rules: name/price/capacity must be filled in, names must be
+    // unique, a tier with sales can't be renamed, and capacity can't drop below tickets already sold.
     private void addOrUpdateTier() {
         String name = tierNameField.getText().trim();
-        double price = ((Number) priceSpinner.getValue()).doubleValue();
-        int capacity = ((Number) capacitySpinner.getValue()).intValue();
+        double price = ((Number) priceSpinner.getValue()).doubleValue();  // Spinner value -> double
+        int capacity = ((Number) capacitySpinner.getValue()).intValue();  // Spinner value -> int
         if (name.isEmpty() || price <= 0 || capacity <= 0) {
             showError("Enter a tier name, positive price, and positive capacity.");
             return;
         }
-        int selected = tierList.getSelectedIndex();
+        int selected = tierList.getSelectedIndex();   // -1 = adding a new tier, otherwise updating that one
+        // No other tier may already use this name.
         for (int index = 0; index < tierModel.size(); index++) {
             if (index != selected && tierModel.get(index).getTierName().equalsIgnoreCase(name)) {
                 showError("Each ticket tier must have a unique name.");
                 return;
             }
         }
-        int sold = 0;
+        int sold = 0;  // Seats already sold in the tier being updated
         if (selected >= 0) {
             TicketTier current = tierModel.get(selected);
             sold = current.getInitialCapacity() - current.getAvailableSeats();
@@ -1239,7 +1243,7 @@ public class AdminDashboardPanel extends JPanel {
                 return;
             }
         }
-        TicketTier updated = new TicketTier(name, price, capacity, capacity - sold);
+        TicketTier updated = new TicketTier(name, price, capacity, capacity - sold);  // Available = new capacity minus what's sold
         if (selected >= 0) {
             tierModel.set(selected, updated);
         } else {
@@ -1249,6 +1253,7 @@ public class AdminDashboardPanel extends JPanel {
         clearTierEditor();
     }
 
+    // Copies the selected tier into the inputs so it can be changed, and relabels the button "Update Tier".
     private void loadSelectedTier() {
         int selected = tierList.getSelectedIndex();
         if (selected < 0) {
@@ -1261,10 +1266,12 @@ public class AdminDashboardPanel extends JPanel {
         tierActionButton.setText("Update Tier");
     }
 
+    // Removes the selected tier - unless guests have already booked tickets in it.
     private void removeSelectedTier() {
         int selected = tierList.getSelectedIndex();
         if (selected >= 0) {
             TicketTier tier = tierModel.get(selected);
+            // Count tickets booked in this tier (0 for a brand-new event).
             int ticketsSold = editingEvent == null ? 0 : orderManager.getBookingsByEvent(editingEvent.getEventId())
                     .stream()
                     .filter(booking -> tier.getTierName().equals(booking.getTierName()))
@@ -1280,6 +1287,7 @@ public class AdminDashboardPanel extends JPanel {
         }
     }
 
+    // Resets the tier inputs to their starting values.
     private void clearTierEditor() {
         tierNameField.setText("");
         priceSpinner.setValue(1000.0);
@@ -1293,7 +1301,8 @@ public class AdminDashboardPanel extends JPanel {
         clearValidation();
         String title = titleField.getText().trim();
         String venue = venueField.getText().trim();
-        LocalDate eventDate = toLocalDate(dateChooser.getDate());
+        LocalDate eventDate = toLocalDate(dateChooser.getDate());  // null if no date was picked
+        // Check 1: title, date and venue are required. Collect every empty one so they can all be outlined in red.
         if (title.isEmpty() || eventDate == null || venue.isEmpty()) {
             List<java.awt.Component> missingFields = new ArrayList<>();
             if (title.isEmpty()) missingFields.add(titleField);
@@ -1305,22 +1314,27 @@ public class AdminDashboardPanel extends JPanel {
         }
         LocalDate salesStart = toLocalDate(salesStartChooser.getDate());
         LocalDate salesEnd = toLocalDate(salesEndChooser.getDate());
+        // Check 2: the sales window can't end before it starts.
         if (salesStart != null && salesEnd != null && salesEnd.isBefore(salesStart)) {
             showValidationError("Sales end cannot be before sales start.", salesStartChooser, salesEndChooser);
             return;
         }
+        // Check 3: at least one ticket tier.
         if (tierModel.isEmpty()) {
             showValidationError("Add at least one ticket tier before saving.", tierList);
             return;
         }
 
+        // All checks passed. Copy the tiers into fresh TicketTier objects for the event.
         List<TicketTier> tiers = new ArrayList<>();
         for (int index = 0; index < tierModel.size(); index++) {
             TicketTier tier = tierModel.get(index);
             tiers.add(new TicketTier(tier.getTierName(), tier.getPrice(), tier.getInitialCapacity(),
                     tier.getAvailableSeats()));
         }
-        String status = (String) statusBox.getSelectedItem();
+        String status = (String) statusBox.getSelectedItem();  // The drop-down returns an Object; cast it to String
+        // New event: create an Event object with a random ID like "EVT-3F9A21BC".
+        // Editing: reuse the existing Event object and update it with the setters below.
         Event savedEvent;
         if (editingEvent == null) {
             savedEvent = new Event("EVT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
@@ -1337,7 +1351,8 @@ public class AdminDashboardPanel extends JPanel {
         savedEvent.setSalesEndDate(salesEnd);
         savedEvent.setCategory(categoryField.getText().trim());
         savedEvent.setBannerImagePath(bannerPathField.getText().trim());
-        savedEvent.setAccentColorHex(String.format("#%06X", selectedAccent.getRGB() & 0xFFFFFF));
+        savedEvent.setAccentColorHex(String.format("#%06X", selectedAccent.getRGB() & 0xFFFFFF));  // Colour -> text like "#0D6EFD"
+        // Turn the list of CustomField records into a name -> value map for the Event.
         Map<String, String> customDetails = new LinkedHashMap<>();
         for (int index = 0; index < customFieldModel.size(); index++) {
             CustomField customField = customFieldModel.get(index);
@@ -1345,10 +1360,12 @@ public class AdminDashboardPanel extends JPanel {
         }
         savedEvent.setCustomDetails(customDetails);
         if (editingEvent == null) {
+            // Hand the event to the controller: add a new one, or replace the old version.
             eventManager.addEvent(savedEvent);
         } else {
             eventManager.updateEvent(savedEvent);
         }
+        // Refresh the list, reset the form, go back to Manage Events and confirm.
         refreshEvents();
         clearValidation();
         startNewEvent();
@@ -1359,12 +1376,13 @@ public class AdminDashboardPanel extends JPanel {
 
     // The reverse of saveEvent(): copies an Event object's data into the form fields using its getters.
     private void loadEvent(Event event) {
-        editingEvent = event;
+        editingEvent = event;  // Remember which event we're editing
         titleField.setText(event.getTitle());
-        dateChooser.setDate(toDate(LocalDate.parse(event.getDate())));
+        dateChooser.setDate(toDate(LocalDate.parse(event.getDate())));  // Text date -> LocalDate -> Date for the picker
         venueField.setText(event.getVenue());
         categoryField.setText(event.getCategory());
         bannerPathField.setText(event.getBannerImagePath());
+        // Read the saved colour text back into a Color (fall back to the brand blue if it's invalid).
         try {
             selectedAccent = Color.decode(event.getAccentColorHex());
         } catch (RuntimeException exception) {
@@ -1372,11 +1390,12 @@ public class AdminDashboardPanel extends JPanel {
         }
         accentColorButton.setBackground(selectedAccent);
         customFieldModel.clear();
-        event.getCustomDetails().forEach((name, value) -> customFieldModel.addElement(new CustomField(name, value)));
+        event.getCustomDetails().forEach((name, value) -> customFieldModel.addElement(new CustomField(name, value)));  // One record per detail
         salesStartChooser.setDate(toDate(event.getSalesStartDate()));
         salesEndChooser.setDate(toDate(event.getSalesEndDate()));
         statusBox.setSelectedItem(event.getStatus());
         tierModel.clear();
+        // Copy each tier into the editor list. Copies are used so editing doesn't change the real event until Save.
         for (TicketTier tier : event.getTicketTiers()) {
             tierModel.addElement(new TicketTier(tier.getTierName(), tier.getPrice(),
                     tier.getInitialCapacity(), tier.getAvailableSeats()));
@@ -1385,19 +1404,20 @@ public class AdminDashboardPanel extends JPanel {
         showPage("Editor");
     }
 
+    // Empties the editor for a brand-new event and opens it.
     private void startNewEvent() {
-        editingEvent = null;
+        editingEvent = null;  // null = "creating, not editing"
         titleField.setText("");
         dateChooser.setDate(null);
         venueField.setText("");
-        categoryField.setText("General");
+        categoryField.setText("General");  // Default category
         bannerPathField.setText("");
         selectedAccent = ViewStyles.ACCENT;
         accentColorButton.setBackground(selectedAccent);
         customFieldModel.clear();
         salesStartChooser.setDate(null);
         salesEndChooser.setDate(null);
-        statusBox.setSelectedItem("ON_SALE");
+        statusBox.setSelectedItem("ON_SALE");  // New events start on sale
         tierModel.clear();
         tierList.clearSelection();
         clearTierEditor();
@@ -1405,10 +1425,13 @@ public class AdminDashboardPanel extends JPanel {
         showPage("Editor");
     }
 
+    // Shows an error message without outlining any field.
     private void showError(String message) {
         showValidationError(message);
     }
 
+    // Shows the red error message and draws a red outline around each field that needs fixing.
+    // "Component... invalidFields" (varargs) accepts any number of fields, including none.
     private void showValidationError(String message, java.awt.Component... invalidFields) {
         validationLabel.setText(message);
         validationLabel.setVisible(true);
@@ -1423,6 +1446,7 @@ public class AdminDashboardPanel extends JPanel {
         validationLabel.repaint();
     }
 
+    // Hides the error message and puts every field's normal border back.
     private void clearValidation() {
         validationLabel.setText(" ");
         validationLabel.setVisible(false);
@@ -1435,6 +1459,8 @@ public class AdminDashboardPanel extends JPanel {
         tierList.setBorder(null);
     }
 
+    // JDateChooser uses the older java.util.Date type; the rest of the app uses LocalDate.
+    // These two helpers convert between them (null stays null).
     private LocalDate toLocalDate(Date date) {
         return date == null ? null : date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
     }
