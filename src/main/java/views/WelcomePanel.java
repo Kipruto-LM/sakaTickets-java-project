@@ -1,62 +1,85 @@
+// This file belongs to the "views" package: the screens (the V in MVC).
 package views;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.GridLayout;
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.border.EmptyBorder;
+// Imports bring in the Java classes this file uses, so we can write "Color" instead of "java.awt.Color".
+import java.awt.BorderLayout;    // Layout with NORTH, SOUTH, EAST, WEST and CENTER areas
+import java.awt.Color;           // An RGB colour
+import java.awt.Dimension;       // A width and height pair, used for sizes
+import java.awt.Font;            // Font style constants such as Font.BOLD
+import java.awt.GridLayout;      // Layout that puts components in equal-sized rows/columns
+import javax.swing.BorderFactory; // Helper for making borders (lines, padding)
+import javax.swing.Box;          // Helper for making invisible spacers
+import javax.swing.BoxLayout;    // Layout that stacks components in one column or row
+import javax.swing.JButton;      // A clickable button
+import javax.swing.JLabel;       // A piece of text on screen
+import javax.swing.JPanel;       // A container that holds other components
+import javax.swing.border.EmptyBorder; // Invisible padding around a component
 
 /**
  * The first screen: guests choose "Browse events" and hosts choose "Start hosting".
  *
+ * Layout from top to bottom:
+ *   1. Header bar   - small SakaTickets logo on the left, location on the right.
+ *   2. Brand block  - the big centred "SakaTickets" name and the tagline.
+ *   3. Two choices  - an "Attend" card and a "Create" card, each with a picture and a button.
+ *   4. Footer       - two small lines of text.
+ *
  * OOP ideas shown here:
  * - Inheritance: WelcomePanel extends JPanel, so it IS a panel that can be shown in the window.
+ *   It gets methods like setLayout(), setBackground() and add() from JPanel for free.
  * - Callbacks with Runnable: the constructor receives two actions from MainFrame. The panel just
  *   runs them when a button is clicked. It doesn't need to know which screen comes next.
- * - Private helper methods split building the screen into small, readable parts.
+ * - Private helper methods split building the screen into small, readable parts
+ *   (buildHeader, buildBrand, buildChoice, buildFooter). "private" means only this class can call them.
  */
 public class WelcomePanel extends JPanel {
+
+    // Constructor: runs once when MainFrame writes "new WelcomePanel(...)".
+    // browseEvents    = what to do when "Browse events" is clicked (MainFrame shows the catalogue).
+    // hostEventAction = what to do when "Start hosting" is clicked (MainFrame shows the host login).
     public WelcomePanel(Runnable browseEvents, Runnable hostEventAction) {
-        setLayout(new BorderLayout(0, 24));
-        setBackground(new Color(0x0F, 0x11, 0x17));
-        setBorder(new EmptyBorder(25, 38, 28, 38));
+        setLayout(new BorderLayout(0, 24));              // BorderLayout with a 24px gap between areas
+        setBackground(new Color(0x0F, 0x11, 0x17));      // Very dark blue-black page background
+        setBorder(new EmptyBorder(25, 38, 28, 38));      // Padding: top, left, bottom, right
         // The slim header bar from the original design stays at the very top.
         add(buildHeader(), BorderLayout.NORTH);
 
+        // "content" holds everything under the header, stacked top to bottom.
         JPanel content = new JPanel();
-        content.setOpaque(false);
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setOpaque(false);                         // Transparent, so the page background shows
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS)); // Y_AXIS = stack vertically
+
         // The big, centred SakaTickets brand sits at the top of the page.
         JPanel brand = buildBrand();
-        brand.setAlignmentX(LEFT_ALIGNMENT);
+        brand.setAlignmentX(LEFT_ALIGNMENT);              // Line it up with the other full-width blocks
+        // Let it stretch to any width, but never taller than it needs to be.
         brand.setMaximumSize(new Dimension(Integer.MAX_VALUE, brand.getPreferredSize().height));
         content.add(brand);
-        content.add(Box.createVerticalStrut(26));
+        content.add(Box.createVerticalStrut(26));         // 26px of empty space below the brand
+
+        // Two equal cards side by side: 1 row, 2 columns, 18px gap between them.
         JPanel choices = new JPanel(new GridLayout(1, 2, 18, 0));
         choices.setOpaque(false);
+        // Card 1, for guests. Clicking its button runs browseEvents.
         choices.add(buildChoice("01   /   ATTEND", "Find your people.\nFind your next thing.",
             "Live music, food, culture and ideas worth leaving home for.", "Browse events",
             EventVisuals.buyerChoice(216, 12), ViewStyles.ACCENT, Color.WHITE, browseEvents));
+        // Card 2, for hosts. A teal button with dark text. Clicking it runs hostEventAction.
         choices.add(buildChoice("02   /   CREATE", "Put your event\non the map.",
             "Build your event, shape ticket tiers, and follow every sale.", "Start hosting",
             EventVisuals.hostChoice(216, 12), new Color(0x00, 0xE5, 0xC4), new Color(0x0F, 0x11, 0x17),
-                hostEventAction));
-        choices.setPreferredSize(new Dimension(1000, 438));
-            choices.setMaximumSize(new Dimension(Integer.MAX_VALUE, 438));
-            choices.setAlignmentX(LEFT_ALIGNMENT);
-            content.add(choices);
-            content.add(Box.createVerticalGlue());
-            JPanel footer = buildFooter();
-            footer.setAlignmentX(LEFT_ALIGNMENT);
-            content.add(footer);
-        add(content, BorderLayout.CENTER);
+            hostEventAction));
+        choices.setPreferredSize(new Dimension(1000, 438));                  // Ideal size of the card row
+        choices.setMaximumSize(new Dimension(Integer.MAX_VALUE, 438));       // Any width, max 438px tall
+        choices.setAlignmentX(LEFT_ALIGNMENT);
+        content.add(choices);
+
+        content.add(Box.createVerticalGlue());            // "Glue" soaks up spare space, pushing the footer down
+        JPanel footer = buildFooter();
+        footer.setAlignmentX(LEFT_ALIGNMENT);
+        content.add(footer);
+
+        add(content, BorderLayout.CENTER);                // CENTER takes all the space left under the header
     }
 
     // Builds the slim header bar: a small "SakaTickets" with "NAIROBI · LIVE EVENTS" under it
