@@ -102,7 +102,7 @@ public class EventAnalyticsPanel extends JPanel {
         content.revalidate();
         content.repaint();
         // After Swing has laid out the page, scroll back to the top.
-        javax.swing.SwingUtilities.invokeLater(() -> scroll.getViewport().setViewPosition(new java.awt.Point(0, 0)));
+        scroll.getVerticalScrollBar().setValue(0);             // Start at the top of the page
     }
 
     // Adds one full-width block to the page with a gap below it.
@@ -165,11 +165,13 @@ public class EventAnalyticsPanel extends JPanel {
         badge.setBorder(BorderFactory.createLineBorder(BORDER));
         JLabel dot = new JLabel("●");
         // Pick the dot colour from the status: green on sale, red sold out/cancelled, amber otherwise (paused).
-        dot.setForeground(switch (status) {
-            case "ON_SALE" -> GOOD;
-            case "SOLD_OUT", "CANCELLED" -> BAD;
-            default -> new Color(0xF5, 0xB0, 0x41);
-        });
+        if (status.equals("ON_SALE")) {
+            dot.setForeground(GOOD);
+        } else if (status.equals("SOLD_OUT") || status.equals("CANCELLED")) {
+            dot.setForeground(BAD);
+        } else {
+            dot.setForeground(new Color(0xF5, 0xB0, 0x41));   // Amber for PAUSED
+        }
         JLabel text = new JLabel(status.replace('_', ' '));     // "ON_SALE" -> "ON SALE"
         text.setForeground(ChartPanel.TEXT);
         text.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 10f));
@@ -364,7 +366,7 @@ public class EventAnalyticsPanel extends JPanel {
 
     // Total seats across all tiers.
     private static int capacity(Event event) {
-        return event.getTicketTiers().stream().mapToInt(TicketTier::getInitialCapacity).sum();
+        return event.getCapacity();
     }
 
     // Labels for the last `days` days, oldest first, e.g. {"13 Sep", ..., "12 Oct"}.

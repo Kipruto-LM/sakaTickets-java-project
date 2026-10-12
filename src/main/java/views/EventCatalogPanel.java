@@ -18,7 +18,6 @@ import javax.swing.JScrollPane;             // Adds scroll bars around a compone
 import javax.swing.ScrollPaneConstants;     // Settings for when scroll bars appear
 import javax.swing.border.EmptyBorder;      // Invisible padding
 import models.Event;                        // The event model
-import models.TicketTier;                   // A ticket price level
 
 /**
  * The guest-facing list of upcoming events, shown as cards.
@@ -31,8 +30,8 @@ import models.TicketTier;                   // A ticket price level
  * - Inheritance: extends JPanel.
  * - MVC: this is a View. It reads events from the EventManager (Controller) and only displays them.
  * - Callbacks: when "Book Now" is clicked, it passes the event ID to checkoutAction
- *   (a Consumer<String>), and MainFrame decides what happens next. Clicking a card or
- *   "View details" does the same with detailsAction.
+ *   (a Consumer<String>), and MainFrame decides what happens next. "View details" does the
+ *   same with detailsAction.
  * - Nested class: RoundedCardPanel at the bottom is a small JPanel subclass used only here.
  */
 public class EventCatalogPanel extends JPanel {
@@ -146,24 +145,25 @@ public class EventCatalogPanel extends JPanel {
         details.add(date);
         details.add(venue);
         // Show up to 2 of the host's custom details, e.g. "Dress code: Smart casual".
-        event.getCustomDetails().entrySet().stream().limit(2).forEach(detail -> {
-            String name = detail.getKey();
-            String value = detail.getValue();
-            JLabel custom = new JLabel(name + ": " + value);
+        int shown = 0;
+        for (String name : event.getCustomDetails().keySet()) {
+            if (shown == 2) {
+                break;                                     // Stop after two
+            }
+            JLabel custom = new JLabel(name + ": " + event.getCustomDetails().get(name));
             ViewStyles.styleSecondaryText(custom, 12f);
             custom.setAlignmentX(LEFT_ALIGNMENT);
             details.add(custom);
-        });
+            shown++;
+        }
 
         // --- Right side of the card: price, seats and buttons, stacked vertically ---
         JPanel purchase = new JPanel();
         purchase.setOpaque(false);
         purchase.setLayout(new BoxLayout(purchase, BoxLayout.Y_AXIS));
 
-        // Cheapest tier that still has seats; falls back to the cheapest overall when all are sold out.
-        double lowestPrice = event.getTicketTiers().stream().filter(tier -> tier.getAvailableSeats() > 0)
-            .mapToDouble(TicketTier::getPrice).min()
-            .orElse(event.getTicketTiers().stream().mapToDouble(TicketTier::getPrice).min().orElse(0.0));
+        // The Event works out its own cheapest price (see Event.getLowestPrice()).
+        double lowestPrice = event.getLowestPrice();
         // %,.0f = number with thousands commas and no decimals, e.g. "From KES 1,050".
         JLabel price = new JLabel(String.format("From KES %,.0f", lowestPrice));
         price.setForeground(ViewStyles.FOREGROUND);
@@ -194,15 +194,6 @@ public class EventCatalogPanel extends JPanel {
         detailsButton.setAlignmentX(RIGHT_ALIGNMENT);
         detailsButton.addActionListener(action -> detailsAction.accept(event.getEventId()));  // Callback
 
-        // Clicking anywhere on the card (outside the buttons) also opens the details page.
-        card.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
-        // Anonymous MouseAdapter subclass that overrides only mouseClicked().
-        card.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseClicked(java.awt.event.MouseEvent mouseEvent) {
-                detailsAction.accept(event.getEventId());
-            }
-        });
 
         purchase.add(price);
         purchase.add(seats);

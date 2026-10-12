@@ -143,11 +143,10 @@ final class EventVisuals {
 
     // Loads a picture bundled inside the app (from src/main/resources). Returns null if it's missing.
     private static BufferedImage loadResource(String path) {
-        // try-with-resources closes the input stream automatically.
-        try (var input = EventVisuals.class.getResourceAsStream(path)) {
-            return input == null ? null : ImageIO.read(input);
-        } catch (IOException exception) {
-            return null;
+        try {
+            return ImageIO.read(EventVisuals.class.getResource(path));
+        } catch (Exception exception) {
+            return null;                    // Missing or unreadable picture: the panel shows a colour instead
         }
     }
 }

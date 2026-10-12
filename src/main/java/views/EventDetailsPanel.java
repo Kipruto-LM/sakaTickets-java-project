@@ -107,7 +107,7 @@ public class EventDetailsPanel extends JPanel {
         content.revalidate();
         content.repaint();
         // After Swing has laid out the page, scroll back to the top.
-        javax.swing.SwingUtilities.invokeLater(() -> scroll.getViewport().setViewPosition(new java.awt.Point(0, 0)));
+        scroll.getVerticalScrollBar().setValue(0);             // Start at the top of the page
     }
 
     // Adds one full-width block to the page, followed by a 16px gap.
@@ -182,9 +182,7 @@ public class EventDetailsPanel extends JPanel {
         facts.add(fact("When", longDate(event.getDate()), EventAnalyticsPanel.countdown(event.getDate())));
         facts.add(fact("Where", event.getVenue(), "Venue"));
         // Cheapest tier that still has seats (or the cheapest overall if all are sold out).
-        double lowest = event.getTicketTiers().stream().filter(tier -> tier.getAvailableSeats() > 0)
-                .mapToDouble(TicketTier::getPrice).min()
-                .orElse(event.getTicketTiers().stream().mapToDouble(TicketTier::getPrice).min().orElse(0));
+        double lowest = event.getLowestPrice();
         // "1 ticket type" or "3 ticket types" - singular or plural.
         facts.add(fact("Tickets from", String.format("KES %,.0f", lowest),
                 event.getTicketTiers().size() + (event.getTicketTiers().size() == 1 ? " ticket type" : " ticket types")));
@@ -244,7 +242,7 @@ public class EventDetailsPanel extends JPanel {
             if (i >= DEMAND_DAYS - 7) lastWeek += daily[i];                 // Only count the last 7 entries
         }
         int sold = orderManager.calculateTotalTicketsSold(id);
-        int capacity = event.getTicketTiers().stream().mapToInt(TicketTier::getInitialCapacity).sum();
+        int capacity = event.getCapacity();
         double soldShare = capacity == 0 ? 0 : (double) sold / capacity;   // e.g. 0.75 = 75% sold
 
         // The chart: blue columns, a date label every 3 days, 150px tall.
@@ -305,9 +303,8 @@ public class EventDetailsPanel extends JPanel {
         list.setOpaque(false);
         list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
         boolean salesOpen = event.canPurchase();
-        // Price of the cheapest tier that still has seats (-1 if none), for the "Best price" badge.
-        double cheapestAvailable = event.getTicketTiers().stream().filter(tier -> tier.getAvailableSeats() > 0)
-                .mapToDouble(TicketTier::getPrice).min().orElse(-1);
+        // Price of the cheapest tier that still has seats, for the "Best price" badge.
+        double cheapestAvailable = event.getLowestPrice();
         // One row per tier, with a 10px gap after each.
         for (TicketTier tier : event.getTicketTiers()) {
             list.add(leftAligned(buildTierRow(event, tier, salesOpen,
