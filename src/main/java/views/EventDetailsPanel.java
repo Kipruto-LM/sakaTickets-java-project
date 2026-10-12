@@ -306,7 +306,7 @@ public class EventDetailsPanel extends JPanel {
         JPanel list = new JPanel();
         list.setOpaque(false);
         list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
-        boolean salesOpen = event.canPurchaseOn(LocalDate.now());
+        boolean salesOpen = event.canPurchase();
         // Price of the cheapest tier that still has seats (-1 if none), for the "Best price" badge.
         double cheapestAvailable = event.getTicketTiers().stream().filter(tier -> tier.getAvailableSeats() > 0)
                 .mapToDouble(TicketTier::getPrice).min().orElse(-1);

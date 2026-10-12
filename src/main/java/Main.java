@@ -40,7 +40,7 @@ public class Main {
             MainFrame app;
             try {
                 app = new MainFrame();
-            } catch (database.DatabaseException exception) {
+            } catch (RuntimeException exception) {
                 // Can't reach the database (missing db.properties, wrong password, server off...):
                 // explain what went wrong in a pop-up, then close the program.
                 javax.swing.JOptionPane.showMessageDialog(null, exception.getMessage(),

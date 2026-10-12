@@ -42,7 +42,7 @@ import models.TicketTier;                     // A ticket price level
 /**
  * The dashboard's event editor: one form for both creating a new event and editing an existing one.
  *
- * Form, top to bottom: an error line, the event fields (title, date, venue, sales dates, status,
+ * Form, top to bottom: an error line, the event fields (title, date, venue, status,
  * category, banner), the ticket tiers, the custom details, and the New / Save buttons.
  *
  * OOP ideas shown here:
@@ -63,8 +63,6 @@ class EventEditorPage extends JPanel {
     private final JTextField titleField = new JTextField(28);
     private final JDateChooser dateChooser = new JDateChooser();
     private final JTextField venueField = new JTextField(28);
-    private final JDateChooser salesStartChooser = new JDateChooser();
-    private final JDateChooser salesEndChooser = new JDateChooser();
     private final JComboBox<String> statusBox = new JComboBox<>(STATUSES);
     private final JTextField categoryField = new JTextField(28);
     private final JTextField bannerPathField = new JTextField(22);
@@ -99,19 +97,17 @@ class EventEditorPage extends JPanel {
         errorLabel.setForeground(new Color(0xFF, 0x4D, 0x6A));
         errorLabel.setFont(ViewStyles.BODY_FONT.deriveFont(Font.BOLD, 12f));
         form.add(errorLabel, fullWidth(0, 14));
-        // Rows 1-7: the event fields. "*" marks required fields.
+        // Rows 1-6: the event fields. "*" marks required fields.
         addField(form, "Event title *", titleField, 1);
         addField(form, "Event date *", dateChooser, 2);
         addField(form, "Venue *", venueField, 3);
-        addField(form, "Sales start (optional)", salesStartChooser, 4);
-        addField(form, "Sales end (optional)", salesEndChooser, 5);
-        addField(form, "Sales status", statusBox, 6);
-        addField(form, "Category", categoryField, 7);
-        addField(form, "Banner image", buildBannerField(), 8);
-        // Rows 9-10: tiers and custom details.
-        form.add(buildTierSection(), fullWidth(9, 5));
-        form.add(buildDetailSection(), fullWidth(10, 5));
-        // Row 11: buttons on the right.
+        addField(form, "Sales status", statusBox, 4);
+        addField(form, "Category", categoryField, 5);
+        addField(form, "Banner image", buildBannerField(), 6);
+        // Rows 7-8: tiers and custom details.
+        form.add(buildTierSection(), fullWidth(7, 5));
+        form.add(buildDetailSection(), fullWidth(8, 5));
+        // Row 9: buttons on the right.
         JButton fresh = new JButton("New Event");
         ViewStyles.styleSecondaryButton(fresh);
         fresh.addActionListener(action -> startNewEvent());
@@ -122,7 +118,7 @@ class EventEditorPage extends JPanel {
         buttons.setOpaque(false);
         buttons.add(fresh);
         buttons.add(save);
-        form.add(buttons, fullWidth(11, 0));
+        form.add(buttons, fullWidth(9, 0));
 
         JScrollPane scroll = new JScrollPane(form);              // The form scrolls if the window is short
         scroll.setBorder(BorderFactory.createEmptyBorder());
@@ -142,8 +138,6 @@ class EventEditorPage extends JPanel {
         titleField.setText("");
         dateChooser.setDate(null);
         venueField.setText("");
-        salesStartChooser.setDate(null);
-        salesEndChooser.setDate(null);
         statusBox.setSelectedItem("ON_SALE");        // New events start on sale
         categoryField.setText("General");
         bannerPathField.setText("");
@@ -159,8 +153,6 @@ class EventEditorPage extends JPanel {
         titleField.setText(event.getTitle());
         dateChooser.setDate(toDate(LocalDate.parse(event.getDate())));   // Text -> LocalDate -> Date
         venueField.setText(event.getVenue());
-        salesStartChooser.setDate(toDate(event.getSalesStartDate()));
-        salesEndChooser.setDate(toDate(event.getSalesEndDate()));
         statusBox.setSelectedItem(event.getStatus());
         categoryField.setText(event.getCategory());
         bannerPathField.setText(event.getBannerImagePath());
@@ -186,19 +178,12 @@ class EventEditorPage extends JPanel {
         String title = titleField.getText().trim();
         String venue = venueField.getText().trim();
         LocalDate eventDate = toLocalDate(dateChooser.getDate());          // null if no date picked
-        LocalDate salesStart = toLocalDate(salesStartChooser.getDate());
-        LocalDate salesEnd = toLocalDate(salesEndChooser.getDate());
         // Check 1: required fields.
         if (title.isEmpty() || eventDate == null || venue.isEmpty()) {
             showError("Required: add an event title, event date, and venue.");
             return;
         }
-        // Check 2: the sales window can't end before it starts.
-        if (salesStart != null && salesEnd != null && salesEnd.isBefore(salesStart)) {
-            showError("Sales end cannot be before sales start.");
-            return;
-        }
-        // Check 3: at least one ticket tier.
+        // Check 2: at least one ticket tier.
         if (tierModel.isEmpty()) {
             showError("Add at least one ticket tier before saving.");
             return;
@@ -227,8 +212,6 @@ class EventEditorPage extends JPanel {
         event.setVenue(venue);
         event.setTicketTiers(tiers);
         event.setStatus(status);
-        event.setSalesStartDate(salesStart);
-        event.setSalesEndDate(salesEnd);
         event.setCategory(categoryField.getText().trim());
         event.setBannerImagePath(bannerPathField.getText().trim());
         event.setCustomDetails(details);
@@ -491,7 +474,7 @@ class EventEditorPage extends JPanel {
                 tierNameField, detailNameField, detailValueField}) {
             ViewStyles.styleInput(field);
         }
-        for (JDateChooser chooser : new JDateChooser[] {dateChooser, salesStartChooser, salesEndChooser}) {
+        for (JDateChooser chooser : new JDateChooser[] {dateChooser}) {
             chooser.setDateFormatString("yyyy-MM-dd");               // Show dates as 2026-10-15
             chooser.setPreferredSize(new Dimension(260, 36));
         }

@@ -1,23 +1,20 @@
 // This file belongs to the "controllers" package: the classes that hold the app's logic (the C in MVC).
 package controllers;
 
-import database.DatabaseException;   // Our own error type for database problems
 import java.sql.Connection;          // The open link to PostgreSQL
-import java.sql.PreparedStatement;   // A SQL command with "?" blanks we fill in safely
+import java.sql.PreparedStatement;   // A SQL command with "?" blanks we fill in
 import java.sql.ResultSet;           // The rows a SELECT query gives back
-import java.sql.SQLException;        // Error thrown by Java's database classes
-import java.sql.Statement;           // Runs a plain SQL command
+import java.sql.SQLException;        // The error Java's database classes throw
+import java.time.LocalDate;          // A date without a time
+import java.time.LocalDateTime;      // A date with a time
+import java.time.temporal.ChronoUnit; // Counts the days between two dates
+import java.util.ArrayList;          // A resizable list
+import java.util.List;               // The general list type
+import java.util.Random;             // Random numbers (for the sample sales)
+import java.util.UUID;               // Random unique IDs (for receipt codes)
 import models.Booking;               // One purchase (the receipt)
 import models.Event;                 // The event model
 import models.TicketTier;            // A ticket price level
-import java.time.LocalDate;          // A date without a time
-import java.time.LocalDateTime;      // A date with a time
-import java.util.ArrayList;          // A resizable list
-import java.util.Comparator;         // Describes how to sort things
-import java.util.List;               // The general list type
-import java.util.Locale;             // Language rules for lower-casing
-import java.util.Random;             // Random numbers (for the sample sales)
-import java.util.UUID;               // Random unique IDs (for receipt codes)
 
 /**
  * Controller that records ticket purchases ({@link Booking} objects) and works out sales figures.
@@ -25,15 +22,14 @@ import java.util.UUID;               // Random unique IDs (for receipt codes)
  * app starts (and again on reload()), and each new booking is saved straight away.
  *
  * OOP ideas shown here:
- * - MVC: the checkout screen calls createBooking(), and the admin dashboard calls the
+ * - MVC: the checkout screen calls createBooking(), and the dashboard calls the
  *   calculate methods. Neither screen does this work itself.
- * - Objects creating objects: createBooking() is the one place where new Booking objects are made.
- * - Abstraction: the analytics methods at the bottom turn the raw list of bookings into
- *   ready-to-chart numbers, so the screens don't need to know how they are worked out.
+ * - Objects creating objects: createBooking() is where new Booking objects are made.
+ * - Abstraction: the methods at the bottom turn the list of bookings into ready-to-chart numbers.
  */
 public class OrderManager {
     private final Connection connection;                    // The shared database connection
-    private List<Booking> allBookings = new ArrayList<>();  // Every booking, as last read from the database
+    private List<Booking> allBookings = new ArrayList<>();  // Every booking, oldest first
 
     // Constructor: keeps the connection (dependency injection) and reads the bookings.
     public OrderManager(Connection connection) {
@@ -44,140 +40,101 @@ public class OrderManager {
     // Reads every booking from the database again, oldest first.
     public void reload() {
         List<Booking> loaded = new ArrayList<>();
-        try (Statement query = connection.createStatement();
-                ResultSet row = query.executeQuery("SELECT * FROM bookings ORDER BY purchased_at")) {
+        try {
+            PreparedStatement query = connection.prepareStatement("SELECT * FROM bookings ORDER BY purchased_at");
+            ResultSet row = query.executeQuery();
             while (row.next()) {                                 // One loop per row
                 Booking booking = new Booking(row.getString("booking_id"), row.getString("event_id"),
                         row.getString("customer_name"), row.getString("customer_email"),
                         row.getString("tier_name"), row.getInt("quantity"), row.getDouble("total_price"));
-                booking.setPurchasedAt(row.getObject("purchased_at", LocalDateTime.class));   // TIMESTAMP -> LocalDateTime
+                booking.setPurchasedAt(row.getTimestamp("purchased_at").toLocalDateTime());
                 loaded.add(booking);
             }
         } catch (SQLException exception) {
-            throw new DatabaseException("Could not load the bookings", exception);
+            throw new RuntimeException("Could not load the bookings: " + exception.getMessage());
         }
         allBookings = loaded;
     }
 
-    // Creates a new booking: builds the Booking object with a short random receipt code,
-    // stores it, and returns it to the caller.
+    // Creates a new booking with a short random receipt code (e.g. "7FE84F78"), saves it, and returns it.
     public Booking createBooking(String eventId, String customerName, String customerEmail, String tierName,
             int quantity, double totalPrice) {
-        // Generate a short, readable 8-character alphanumeric ticket ID
-        // (first 8 characters of a random UUID, in capitals).
-        String uniqueBookingId = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-
-        // Make the Booking object and add it to the list.
-        Booking newBooking = new Booking(uniqueBookingId, eventId, customerName, customerEmail, tierName,
+        String bookingId = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        Booking booking = new Booking(bookingId, eventId, customerName, customerEmail, tierName,
                 quantity, totalPrice);
-        saveBookings(List.of(newBooking));        // Save it to the database first...
-        allBookings.add(newBooking);              // ...then add it to our list
-        return newBooking;
+        saveBooking(booking);                     // Save it to the database first...
+        allBookings.add(booking);                 // ...then add it to our list
+        return booking;
+    }
+
+    // Inserts one booking row.
+    private void saveBooking(Booking booking) {
+        try {
+            PreparedStatement insert = connection.prepareStatement(
+                    "INSERT INTO bookings (booking_id, event_id, customer_name, customer_email, tier_name, "
+                    + "quantity, total_price, purchased_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            insert.setString(1, booking.getBookingId());
+            insert.setString(2, booking.getEventId());
+            insert.setString(3, booking.getCustomerName());
+            insert.setString(4, booking.getCustomerEmail());
+            insert.setString(5, booking.getTierName());
+            insert.setInt(6, booking.getQuantity());
+            insert.setDouble(7, booking.getTotalPrice());
+            insert.setObject(8, booking.getPurchasedAt());      // LocalDateTime -> TIMESTAMP
+            insert.executeUpdate();
+        } catch (SQLException exception) {
+            throw new RuntimeException("Could not save the booking: " + exception.getMessage());
+        }
     }
 
     // Fills the sample events with past sales so the catalogue and dashboard look realistic.
-    // Only used once, on a brand-new database. Each sale goes through Event.purchase() (which takes
-    // the seats from the Event object) and is recorded as a Booking. The bookings are saved here;
-    // MainFrame then saves the events so their new seat counts are stored too.
+    // Only used once, on a brand-new database. MainFrame saves the events afterwards so their
+    // reduced seat counts are stored too.
     public void seedSampleSales(List<Event> events) {
         // Made-up guest names used for the sample bookings.
         String[] guests = {"Wanjiru Kamau", "Otieno Ochieng", "Achieng Atieno", "Kipchoge Rotich",
             "Njeri Mwangi", "Mutua Musyoka", "Akinyi Odhiambo", "Kiprop Kibet", "Wambui Njoroge",
-            "Omondi Owino", "Chebet Langat", "Kamau Githinji", "Nyambura Wairimu", "Barasa Wekesa",
-            "Moraa Nyaboke", "Mwende Mutiso", "Juma Hassan", "Amina Abdi", "Kariuki Maina", "Zawadi Mbeki"};
-        // Share of each event's seats already sold, in the same order as the sample events.
-        // e.g. 0.72 means 72% of the first event's seats are sold.
-        double[] sellThrough = {0.72, 0.58, 0.91, 0.44, 0.66, 0.37, 0.53};
-        Random random = new Random(2026);        // The "seed" 2026 makes the random numbers repeatable
-        LocalDateTime now = LocalDateTime.now(); // Purchase times are counted back from right now
-        List<Booking> sampleBookings = new ArrayList<>();
-        // Outer loop: one pass per sample event (stops early if there are fewer events or percentages).
-        for (int index = 0; index < events.size() && index < sellThrough.length; index++) {
-            Event event = events.get(index);
-            // Inner loop: one pass per ticket tier of that event.
+            "Omondi Owino", "Chebet Langat", "Kamau Githinji", "Nyambura Wairimu", "Barasa Wekesa"};
+        Random random = new Random();
+        for (Event event : events) {
             for (TicketTier tier : event.getTicketTiers()) {
-                // Early Bird sells faster and earlier, VIP sells a little slower.
-                // This "switch expression" picks a number based on the tier's name.
-                double factor = switch (tier.getTierName()) {
-                    case "Early Bird" -> 1.45;
-                    case "VIP" -> 0.75;
-                    default -> 1.0;
-                };
-                // How many seats to sell in this tier (Math.min caps it at 100% of the seats).
-                int target = (int) Math.round(tier.getAvailableSeats() * Math.min(1.0, sellThrough[index] * factor));
+                // Sell about 30% to 90% of each tier's seats.
+                int target = tier.getAvailableSeats() * (30 + random.nextInt(61)) / 100;
                 int sold = 0;
-                // Keep making bookings until the target is reached.
                 while (sold < target) {
-                    // Each booking buys 1-4 tickets (nextInt(4) gives 0-3), but never more than are still needed.
-                    int quantity = Math.min(1 + random.nextInt(4), target - sold);
-                    // Let the Event take the seats. If it refuses, stop selling this tier.
+                    int quantity = Math.min(1 + random.nextInt(4), target - sold);   // 1 to 4 tickets
                     if (!event.purchase(tier.getTierName(), quantity)) {
-                        break;
+                        break;                                       // The event refused: stop this tier
                     }
-                    // Pick a random guest and build their email, e.g. "wanjiru.kamau@example.com".
                     String guest = guests[random.nextInt(guests.length)];
-                    String email = guest.toLowerCase(Locale.ROOT).replace(' ', '.') + "@example.com";
+                    String email = guest.toLowerCase().replace(' ', '.') + "@example.com";
                     String bookingId = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-                    // Record the booking, then move its purchase time into the past.
-                    Booking booking = new Booking(bookingId, event.getEventId(), guest, email, tier.getTierName(),
-                            quantity, tier.getPrice() * quantity);
-                    booking.setPurchasedAt(now.minusMinutes(sampleMinutesAgo(tier.getTierName(), random)));
-                    sampleBookings.add(booking);
+                    Booking booking = new Booking(bookingId, event.getEventId(), guest, email,
+                            tier.getTierName(), quantity, tier.getPrice() * quantity);
+                    // Give the sale a random time in the last 30 days.
+                    booking.setPurchasedAt(LocalDateTime.now().minusMinutes(random.nextInt(30 * 24 * 60)));
+                    saveBooking(booking);
                     sold += quantity;
                 }
             }
         }
-        saveBookings(sampleBookings);              // Save them all to the database
-        allBookings.addAll(sampleBookings);
-        // Keep the list in time order, like real purchases arriving one after another.
-        allBookings.sort(Comparator.comparing(Booking::getPurchasedAt));
+        reload();                                    // Read them back in time order
     }
 
-    // Inserts bookings into the database. A "batch" sends many INSERTs together in one trip,
-    // which is much faster than sending them one by one.
-    private void saveBookings(List<Booking> bookings) {
-        String sql = "INSERT INTO bookings (booking_id, event_id, customer_name, customer_email, tier_name, "
-                + "quantity, total_price, purchased_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement insert = connection.prepareStatement(sql)) {
-            for (Booking booking : bookings) {
-                insert.setString(1, booking.getBookingId());
-                insert.setString(2, booking.getEventId());
-                insert.setString(3, booking.getCustomerName());
-                insert.setString(4, booking.getCustomerEmail());
-                insert.setString(5, booking.getTierName());
-                insert.setInt(6, booking.getQuantity());
-                insert.setDouble(7, booking.getTotalPrice());
-                insert.setObject(8, booking.getPurchasedAt());     // LocalDateTime -> TIMESTAMP
-                insert.addBatch();                                  // Queue this INSERT
-            }
-            insert.executeBatch();                                  // Send them all
-        } catch (SQLException exception) {
-            throw new DatabaseException("Could not save the booking", exception);
-        }
-    }
+    // ---- Sales figures ----
 
-    // Picks how long ago a sample sale happened. Early Bird sales are 2-5 weeks old; other
-    // tiers lean towards recent days, so sales speed up as the event gets closer.
-    private static long sampleMinutesAgo(String tierName, Random random) {
-        // nextDouble() gives a random number from 0 up to 1.
-        double days = "Early Bird".equals(tierName)
-                ? 14 + random.nextDouble() * 21               // Early Bird: between 14 and 35 days ago
-                : 27 * Math.pow(random.nextDouble(), 1.7);    // Others: 0-27 days ago, more often recent
-        return (long) (days * 24 * 60);                       // Convert days to minutes
-    }
-
-    // Retrieve bookings for a specific event to check sales
+    // All bookings for one event.
     public List<Booking> getBookingsByEvent(String eventId) {
-        List<Booking> eventBookings = new ArrayList<>();   // Start an empty result list
-        for (Booking b : allBookings) {                    // Look at every booking
-            if (b.getEventId().equals(eventId)) {          // Keep it if it's for this event
-                eventBookings.add(b);
+        List<Booking> eventBookings = new ArrayList<>();
+        for (Booking booking : allBookings) {
+            if (booking.getEventId().equals(eventId)) {           // Keep it if it's for this event
+                eventBookings.add(booking);
             }
         }
         return eventBookings;
     }
 
-    // Total money taken for one event: adds up getTotalPrice() from each of its bookings.
+    // Total money taken for one event.
     public double calculateEventRevenue(String eventId) {
         double total = 0;
         for (Booking booking : getBookingsByEvent(eventId)) {
@@ -186,7 +143,7 @@ public class OrderManager {
         return total;
     }
 
-    // Total tickets sold for one event: adds up the quantity of each of its bookings.
+    // Total tickets sold for one event.
     public int calculateTotalTicketsSold(String eventId) {
         int total = 0;
         for (Booking booking : getBookingsByEvent(eventId)) {
@@ -195,32 +152,28 @@ public class OrderManager {
         return total;
     }
 
-    // ---- Analytics: turn bookings into numbers the charts can draw ----
-
     // Tickets sold on each of the last `days` days, oldest first. The last entry is today.
     // e.g. with days = 30, counts[0] is 29 days ago and counts[29] is today.
     public int[] getDailyTicketSales(String eventId, int days) {
         int[] counts = new int[days];                                  // One counter per day, all starting at 0
-        LocalDate firstDay = LocalDate.now().minusDays(days - 1L);     // The oldest day in the range
+        LocalDate firstDay = LocalDate.now().minusDays(days - 1);      // The oldest day in the range
         for (Booking booking : getBookingsByEvent(eventId)) {
             LocalDate day = booking.getPurchasedAt().toLocalDate();    // Just the date part
-            // How many days after firstDay this booking happened = which counter to add to.
-            int offset = (int) java.time.temporal.ChronoUnit.DAYS.between(firstDay, day);
-            if (offset >= 0 && offset < days) {                        // Ignore bookings outside the range
-                counts[offset] += booking.getQuantity();
+            int index = (int) ChronoUnit.DAYS.between(firstDay, day);  // Which counter this day belongs to
+            if (index >= 0 && index < days) {                          // Ignore bookings outside the range
+                counts[index] += booking.getQuantity();
             }
         }
         return counts;
     }
 
-    // The most recent bookings first, up to `limit` of them.
+    // The newest bookings for one event, up to `limit` of them. The list is oldest-first,
+    // so we walk it backwards from the end.
     public List<Booking> getRecentBookings(String eventId, int limit) {
-        List<Booking> sorted = getBookingsByEvent(eventId);
-        // Sort by purchase time, then reverse so the newest comes first.
-        sorted.sort(Comparator.comparing(Booking::getPurchasedAt).reversed());
+        List<Booking> eventBookings = getBookingsByEvent(eventId);
         List<Booking> result = new ArrayList<>();
-        for (int i = 0; i < sorted.size() && i < limit; i++) {   // Take at most `limit` of them
-            result.add(sorted.get(i));
+        for (int i = eventBookings.size() - 1; i >= 0 && result.size() < limit; i--) {
+            result.add(eventBookings.get(i));
         }
         return result;
     }

@@ -8,7 +8,6 @@ import java.awt.FlowLayout;                 // Layout that places items in a row
 import java.awt.GridBagConstraints;         // Position/size rules for one item in a GridBagLayout
 import java.awt.GridBagLayout;              // A flexible grid layout
 import java.awt.Insets;                     // Spacing around an item
-import java.time.LocalDate;                 // Today's date (to check if sales are open)
 import java.util.function.Consumer;         // An object holding an action that takes one value
 import javax.swing.BorderFactory;           // Helper for making borders
 import javax.swing.JButton;                 // A clickable button
@@ -333,7 +332,7 @@ public class CheckoutPanel extends JPanel {
         int quantity = Math.min((Integer) quantitySpinner.getValue(), maximumSeats);
         quantitySpinner.setModel(new SpinnerNumberModel(quantity, 1, maximumSeats, 1));
         // Can this tier be bought today?
-        boolean dateIsOpen = selectedEvent != null && selectedEvent.canPurchaseOn(LocalDate.now());
+        boolean dateIsOpen = selectedEvent != null && selectedEvent.canPurchase();
         boolean tierHasSeats = selectedTier.getAvailableSeats() > 0;
         availabilityLabel.setText(!dateIsOpen ? "Sales Closed"
                 : tierHasSeats ? selectedTier.getAvailableSeats() + " tickets available" : "This tier is sold out");

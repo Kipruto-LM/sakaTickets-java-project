@@ -345,7 +345,7 @@ class EventListPage extends JPanel {
 
     // Copies an event (the controller makes the copy), then opens the copy in the editor.
     private void duplicateEvent(Event event) {
-        Event copy = eventManager.duplicateEvent(event.getEventId(), hostId);
+        Event copy = eventManager.duplicateEvent(event);
         changedAction.run();
         editAction.accept(copy);
     }
@@ -357,7 +357,7 @@ class EventListPage extends JPanel {
                 : "Restore this event to your dashboard and the public catalog?";
         int answer = JOptionPane.showConfirmDialog(this, question, "Confirm event change", JOptionPane.YES_NO_OPTION);
         if (answer == JOptionPane.YES_OPTION) {
-            eventManager.setArchived(event.getEventId(), archive);
+            eventManager.setArchived(event, archive);
             changedAction.run();
         }
     }
@@ -374,7 +374,7 @@ class EventListPage extends JPanel {
         int answer = JOptionPane.showConfirmDialog(this, question, "Delete event",
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (answer == JOptionPane.YES_OPTION) {
-            eventManager.deleteEvent(event.getEventId());   // Removes it from the database
+            eventManager.deleteEvent(event);   // Removes it from the database
             orderManager.reload();                           // Our list of bookings is now out of date
             changedAction.run();                             // Refresh the dashboard
         }

@@ -177,7 +177,7 @@ public class EventCatalogPanel extends JPanel {
 
         // "Book Now" is blue when tickets can be bought; otherwise grey, disabled, and says "Sales Closed".
         JButton bookButton = new JButton("Book Now");
-        boolean salesOpen = event.canPurchaseOn(java.time.LocalDate.now()) && event.getAvailableSeats() > 0;
+        boolean salesOpen = event.canPurchase() && event.getAvailableSeats() > 0;
         if (salesOpen) {
             ViewStyles.stylePrimaryButton(bookButton);
         } else {

@@ -68,7 +68,7 @@ public class MainFrame extends JFrame {
         if (eventManager.isNewDatabase()) {
             orderManager.seedSampleSales(eventManager.getEvents());
             for (Event event : eventManager.getEvents()) {
-                eventManager.saveSeatCounts(event);
+                eventManager.updateEvent(event);
             }
         }
 
