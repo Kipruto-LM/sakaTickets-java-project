@@ -1,57 +1,66 @@
+// This file belongs to the "views" package: the screens (the V in MVC).
 package views;
 
-import controllers.EventManager;
-import controllers.OrderManager;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.awt.GridLayout;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.LinkedHashMap;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import javax.swing.BorderFactory;
-import javax.swing.JCheckBox;
-import javax.swing.JColorChooser;
-import javax.swing.DefaultListModel;
-import javax.swing.JButton;
-import javax.swing.JFileChooser;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
-import javax.swing.JProgressBar;
-import javax.swing.JScrollPane;
-import javax.swing.JSpinner;
-import javax.swing.JTable;
-import javax.swing.JTextField;
-import javax.swing.ListSelectionModel;
-import javax.swing.SpinnerNumberModel;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableModel;
-import com.toedter.calendar.JDateChooser;
-import models.Event;
-import models.TicketTier;
+import controllers.EventManager;  // Holds all events
+import controllers.OrderManager;  // Holds all bookings and sales numbers
+import java.awt.BorderLayout;  // Layout with NORTH/SOUTH/EAST/WEST/CENTER areas
+import java.awt.Color;  // An RGB colour
+import java.awt.Dimension;  // A width and height
+import java.awt.FlowLayout;  // Layout that places items in a row
+import java.awt.Font;  // Font style constants
+import java.awt.GridBagConstraints;  // Position/size rules for one item in a GridBagLayout
+import java.awt.GridBagLayout;  // A flexible grid layout
+import java.awt.Insets;  // Spacing around an item: top, left, bottom, right
+import java.awt.GridLayout;  // Layout with equal-sized cells
+import java.io.IOException;  // Error thrown when writing a file fails
+import java.nio.charset.StandardCharsets;  // Text encodings such as UTF-8
+import java.nio.file.Files;  // Helpers for reading and writing files
+import java.util.LinkedHashMap;  // A map that keeps insertion order
+import java.time.LocalDate;  // A date without a time
+import java.time.ZoneId;  // A time zone (needed to convert old-style Date objects)
+import java.time.format.DateTimeParseException;  // Error thrown when text isn't a valid date
+import java.util.ArrayList;  // A resizable list
+import java.util.Date;  // The older Java date type that JDateChooser uses
+import java.util.List;  // The general list type
+import java.util.Map;  // The general map type
+import java.util.UUID;  // Random unique IDs for new events
+import javax.swing.BorderFactory;  // Helper for making borders
+import javax.swing.JCheckBox;  // A tick box
+import javax.swing.JColorChooser;  // A pop-up colour picker
+import javax.swing.DefaultListModel;  // Holds the items shown in a JList
+import javax.swing.JButton;  // A clickable button
+import javax.swing.JFileChooser;  // A pop-up file picker
+import javax.swing.JComboBox;  // A drop-down list
+import javax.swing.JLabel;  // A piece of text
+import javax.swing.JList;  // A scrollable list of items
+import javax.swing.JMenuItem;  // One item in a pop-up menu
+import javax.swing.JOptionPane;  // Pop-up message and question boxes
+import javax.swing.JPanel;  // A container
+import javax.swing.JPopupMenu;  // A menu that pops up (the "···" menu)
+import javax.swing.JProgressBar;  // A bar that fills up (sales progress)
+import javax.swing.JScrollPane;  // Adds scroll bars
+import javax.swing.JSpinner;  // A number box with up/down arrows
+import javax.swing.JTable;  // A table with rows and columns
+import javax.swing.JTextField;  // A one-line text box
+import javax.swing.ListSelectionModel;  // Rules for selecting items in a JList
+import javax.swing.SpinnerNumberModel;  // Value, minimum, maximum and step for a JSpinner
+import javax.swing.filechooser.FileNameExtensionFilter;  // Limits the file picker to certain file types
+import javax.swing.border.EmptyBorder;  // Invisible padding
+import javax.swing.table.DefaultTableModel;  // Holds a table's data
+import com.toedter.calendar.JDateChooser;  // A date picker with a calendar (outside library from pom.xml)
+import models.Event;  // The event model
+import models.TicketTier;  // A ticket price level
 
 /**
  * The host's workspace: sales stats, the event list, and the form for creating or editing events.
+ *
+ * Layout: a sidebar on the left (logo, menu, account) and a workspace on the right with a top bar
+ * and one of these "pages" (switched with a CardLayout):
+ *   Overview      - totals, two charts, inventory status
+ *   Manage Events - search/filters and one row per event
+ *   Insights      - EventAnalyticsPanel for one event
+ *   Editor        - the create/edit event form
+ *   Settings      - account details
  *
  * OOP ideas shown here:
  * - Inheritance: extends JPanel.
@@ -64,56 +73,60 @@ import models.TicketTier;
  * - Records and anonymous classes are used near the bottom of the file (CustomField, the table model).
  */
 public class AdminDashboardPanel extends JPanel {
+    // The statuses a host can pick for an event.
     private static final String[] EVENT_STATUSES = {"ON_SALE", "PAUSED", "CANCELLED", "SOLD_OUT"};
 
     // Dependencies passed in through the constructor (dependency injection).
-    private final EventManager eventManager;
-    private final OrderManager orderManager;
-    private final Runnable logoutAction;
-    private final String hostId;
+    private final EventManager eventManager;  // Events (read and save)
+    private final OrderManager orderManager;  // Bookings and sales numbers
+    private final Runnable logoutAction;  // Callback: log out and go back to the welcome page
+    private final String hostId;  // Which host is logged in (only their events are shown)
     // UI components: kept as fields so every method in this class can reach them.
-    private final JPanel eventList = new JPanel();
-    private final JPanel eventState = new JPanel(new java.awt.CardLayout());
-    private final java.awt.CardLayout pageLayout = new java.awt.CardLayout();
-    private final JPanel pages = new JPanel(pageLayout);
-    private final Map<String, JButton> navButtons = new LinkedHashMap<>();
-    private final JLabel pageTitle = new JLabel("Active Events Inventory");
-    private final JLabel pageDescription = new JLabel("Manage and monitor your events");
+    private final JPanel eventList = new JPanel();  // Holds one row per event on the Manage Events page
+    private final JPanel eventState = new JPanel(new java.awt.CardLayout());  // Switches between the event table, "no events" and "no matches"
+    private final java.awt.CardLayout pageLayout = new java.awt.CardLayout();  // Switches between the dashboard pages
+    private final JPanel pages = new JPanel(pageLayout);  // Holds every page
+    private final Map<String, JButton> navButtons = new LinkedHashMap<>();  // Sidebar buttons, by page name
+    private final JLabel pageTitle = new JLabel("Active Events Inventory");  // Title in the top bar
+    private final JLabel pageDescription = new JLabel("Manage and monitor your events");  // Line under the title
+    // The three Overview stat cards: a big value and a small hint each.
     private final JLabel capacityValue = new JLabel("0");
     private final JLabel soldValue = new JLabel("0");
     private final JLabel revenueValue = new JLabel("KES 0");
     private final JLabel capacityHint = new JLabel("across active events");
     private final JLabel soldHint = new JLabel("0% sell-through");
     private final JLabel revenueHint = new JLabel("before platform fees");
-    private final JButton createEventButton = new JButton("+  Create New Event");
-    private String activePage = "Manage Events";
+    private final JButton createEventButton = new JButton("+  Create New Event");  // Top-right button
+    private String activePage = "Manage Events";  // Name of the page currently showing
+    // --- Event editor form fields ---
     private final JTextField titleField = new JTextField(28);
     private final JDateChooser dateChooser = createDateChooser();
     private final JTextField venueField = new JTextField(28);
     private final JDateChooser salesStartChooser = createDateChooser();
     private final JDateChooser salesEndChooser = createDateChooser();
-    private final JLabel validationLabel = new JLabel(" ");
+    private final JLabel validationLabel = new JLabel(" ");  // Red error message on the form
     private final JTextField categoryField = new JTextField(28);
-    private final JTextField bannerPathField = new JTextField(22);
-    private final JTextField customNameField = new JTextField(12);
-    private final JTextField customValueField = new JTextField(18);
-    private final JTextField tierNameField = new JTextField(12);
-    private final JSpinner priceSpinner = new JSpinner(new SpinnerNumberModel(1000.0, 1.0, 100000000.0, 100.0));
-    private final JSpinner capacitySpinner = new JSpinner(new SpinnerNumberModel(50, 1, 100000, 1));
-    private final JComboBox<String> statusBox = new JComboBox<>(EVENT_STATUSES);
-    private final DefaultListModel<TicketTier> tierModel = new DefaultListModel<>();
-    private final JList<TicketTier> tierList = new JList<>(tierModel);
-        private final DefaultListModel<CustomField> customFieldModel = new DefaultListModel<>();
-        private final JList<CustomField> customFieldList = new JList<>(customFieldModel);
-    private final JButton tierActionButton = new JButton("Add Tier");
-        private final JButton accentColorButton = new JButton("Choose accent color");
+    private final JTextField bannerPathField = new JTextField(22);  // Path of the chosen banner picture
+    private final JTextField customNameField = new JTextField(12);  // New custom detail: name
+    private final JTextField customValueField = new JTextField(18);  // New custom detail: value
+    private final JTextField tierNameField = new JTextField(12);  // Tier editor: name
+    private final JSpinner priceSpinner = new JSpinner(new SpinnerNumberModel(1000.0, 1.0, 100000000.0, 100.0));  // Tier price: starts 1000, min 1, steps of 100
+    private final JSpinner capacitySpinner = new JSpinner(new SpinnerNumberModel(50, 1, 100000, 1));  // Tier seats: starts 50, min 1
+    private final JComboBox<String> statusBox = new JComboBox<>(EVENT_STATUSES);  // Event status drop-down
+    private final DefaultListModel<TicketTier> tierModel = new DefaultListModel<>();  // The tiers being edited...
+    private final JList<TicketTier> tierList = new JList<>(tierModel);  // ...and the list that shows them
+        private final DefaultListModel<CustomField> customFieldModel = new DefaultListModel<>();  // The custom details being edited...
+        private final JList<CustomField> customFieldList = new JList<>(customFieldModel);  // ...and the list that shows them
+    private final JButton tierActionButton = new JButton("Add Tier");  // Says "Add Tier" or "Update Tier"
+        private final JButton accentColorButton = new JButton("Choose accent color");  // Opens the colour picker
+        // --- Manage Events filters ---
         private final JTextField searchField = new JTextField(18);
-        private final JTextField dateFromFilter = new JTextField(10);
-        private final JTextField dateToFilter = new JTextField(10);
+        private final JTextField dateFromFilter = new JTextField(10);  // yyyy-mm-dd
+        private final JTextField dateToFilter = new JTextField(10);  // yyyy-mm-dd
         private final JComboBox<String> statusFilter = new JComboBox<>(
             new String[] {"All statuses", "ON_SALE", "PAUSED", "SOLD_OUT", "CANCELLED"});
-        private final JCheckBox archivedToggle = new JCheckBox("Show archived");
-        private Color selectedAccent = ViewStyles.ACCENT;
+        private final JCheckBox archivedToggle = new JCheckBox("Show archived");  // Include archived events?
+        private Color selectedAccent = ViewStyles.ACCENT;  // Accent colour chosen in the editor
     // The event currently open in the form, or null when creating a new one.
     private Event editingEvent;
     // The per-event insights page, and the overview charts that are rebuilt whenever sales change.
@@ -122,10 +135,10 @@ public class AdminDashboardPanel extends JPanel {
 
     // Static helper: it doesn't use any fields, so it belongs to the class, not to an object.
     private static JDateChooser createDateChooser() {
-        JDateChooser chooser = new JDateChooser();
-        chooser.setDateFormatString("yyyy-MM-dd");
+        JDateChooser chooser = new JDateChooser();  // A date box with a calendar button
+        chooser.setDateFormatString("yyyy-MM-dd");  // Show dates as 2026-10-15
         chooser.setPreferredSize(new Dimension(260, 36));
-        chooser.setDate(null);
+        chooser.setDate(null);  // Start empty
         return chooser;
     }
 
@@ -136,16 +149,22 @@ public class AdminDashboardPanel extends JPanel {
         this.orderManager = orderManager;
         this.logoutAction = logoutAction;
         this.hostId = hostId;
+        // Build every part of the screen, then fill in the event list and numbers.
         buildPanel(hostName);
         refreshEvents();
     }
 
     // The only public method: rebuilds the event list using the current search and filters.
     public void refreshEvents() {
-        eventList.removeAll();
-        List<Event> allEvents = eventManager.getEventsByHostId(hostId);
-        String query = searchField.getText().trim().toLowerCase(java.util.Locale.ROOT);
-        String selectedStatus = (String) statusFilter.getSelectedItem();
+        eventList.removeAll();  // Clear the old rows
+        List<Event> allEvents = eventManager.getEventsByHostId(hostId);  // Every event this host owns
+        String query = searchField.getText().trim().toLowerCase(java.util.Locale.ROOT);  // Search text, lower-case
+        String selectedStatus = (String) statusFilter.getSelectedItem();  // Chosen status filter
+        // Keep only the events that pass every filter, one .filter() step per rule:
+        //  1. archived events only if "Show archived" is ticked
+        //  2. the chosen status (or all)
+        //  3. the search text appears in the title, venue, category or date
+        //  4. the date is inside the From/To range
         List<Event> events = allEvents.stream()
             .filter(event -> archivedToggle.isSelected() || !event.isArchived())
             .filter(event -> "All statuses".equals(selectedStatus) || event.getStatus().equals(selectedStatus))
@@ -153,9 +172,10 @@ public class AdminDashboardPanel extends JPanel {
                 + event.getCategory() + " " + event.getDate()).toLowerCase(java.util.Locale.ROOT).contains(query))
             .filter(this::matchesDateRange)
             .toList();
-        for (Event event : events) eventList.add(createInventoryRow(event));
-        updateSummary(allEvents);
-        rebuildOverviewCharts(allEvents);
+        for (Event event : events) eventList.add(createInventoryRow(event));  // One row per matching event
+        updateSummary(allEvents);  // Update the three Overview stat cards
+        rebuildOverviewCharts(allEvents);  // Redraw the Overview charts
+        // Show the right card: "empty" (no events at all), "filtered" (none match) or the table.
         java.awt.CardLayout layout = (java.awt.CardLayout) eventState.getLayout();
         layout.show(eventState, allEvents.isEmpty() ? "empty" : events.isEmpty() ? "filtered" : "eventsTable");
         eventList.revalidate();
