@@ -7,6 +7,7 @@ package models;
  *
  * OOP ideas shown here:
  * - Single responsibility: this class only looks after one tier's price and seats.
+ * - Overriding: toString() replaces the version every Java object inherits from the Object class.
  * - Encapsulation protecting data: availableSeats is private and only goes down through
  *   purchase(), which refuses bad amounts. That way the seat count can never go negative.
  */
@@ -43,6 +44,14 @@ public class TicketTier {
     public void setInitialCapacity(int initialCapacity) { this.initialCapacity = initialCapacity; }
     public int getAvailableSeats() { return availableSeats; }
     public void setAvailableSeats(int availableSeats) { this.availableSeats = availableSeats; }
+
+    // Overriding toString(): Java calls this whenever a TicketTier has to be shown as text,
+    // for example in the editor's tier list and the checkout drop-down.
+    // e.g. "VIP - KES 3,750 (12 of 18 left)"
+    @Override
+    public String toString() {
+        return String.format("%s - KES %,.0f (%d of %d left)", tierName, price, availableSeats, initialCapacity);
+    }
 
     // The object checks its own rules before changing its state: it returns false
     // instead of selling more seats than it has.

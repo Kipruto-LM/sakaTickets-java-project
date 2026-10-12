@@ -12,10 +12,8 @@ import java.awt.GridBagConstraints;           // Position/size rules for one ite
 import java.awt.GridBagLayout;                // A flexible grid layout
 import java.awt.GridLayout;                   // Layout with equal-sized cells
 import java.awt.Insets;                       // Spacing around an item
-import java.time.LocalDate;                   // A date without a time
-import java.time.ZoneId;                      // A time zone (needed to convert Date <-> LocalDate)
 import java.util.ArrayList;                   // A resizable list
-import java.util.Date;                        // The older date type that JDateChooser uses
+import java.text.SimpleDateFormat;            // Turns a Date into text like "2026-10-15"
 import java.util.LinkedHashMap;               // A map that keeps insertion order
 import java.util.List;                        // The general list type
 import java.util.Map;                         // The general map type
@@ -49,7 +47,6 @@ import models.TicketTier;                     // A ticket price level
  * - Single responsibility: this class only handles the form. Saving is done by EventManager.
  * - Objects working together: the form builds TicketTier and Event objects from what the host
  *   typed, then hands the Event to the controller.
- * - Records: CustomField (at the bottom) is a tiny data class Java writes for us.
  */
 class EventEditorPage extends JPanel {
     private static final String[] STATUSES = {"ON_SALE", "PAUSED", "CANCELLED", "SOLD_OUT"};
@@ -76,8 +73,9 @@ class EventEditorPage extends JPanel {
     // Custom details editor.
     private final JTextField detailNameField = new JTextField(12);
     private final JTextField detailValueField = new JTextField(18);
-    private final DefaultListModel<CustomField> detailModel = new DefaultListModel<>();
-    private final JList<CustomField> detailList = new JList<>(detailModel);
+    private Map<String, String> details = new LinkedHashMap<>();           // The details being edited
+    private final DefaultListModel<String> detailModel = new DefaultListModel<>();   // Shows them as "name: value"
+    private final JList<String> detailList = new JList<>(detailModel);
     // The event being edited, or null when creating a new one.
     private Event editingEvent;
 
@@ -142,7 +140,8 @@ class EventEditorPage extends JPanel {
         categoryField.setText("General");
         bannerPathField.setText("");
         tierModel.clear();
-        detailModel.clear();
+        details = new LinkedHashMap<>();
+        showDetails();
         clearTierInputs();
         errorLabel.setText(" ");
     }
@@ -151,7 +150,7 @@ class EventEditorPage extends JPanel {
     void loadEvent(Event event) {
         editingEvent = event;                        // Remember which event we're editing
         titleField.setText(event.getTitle());
-        dateChooser.setDate(toDate(LocalDate.parse(event.getDate())));   // Text -> LocalDate -> Date
+        dateChooser.setDate(java.sql.Date.valueOf(event.getDate()));     // "2026-10-15" -> a Date for the picker
         venueField.setText(event.getVenue());
         statusBox.setSelectedItem(event.getStatus());
         categoryField.setText(event.getCategory());
@@ -162,11 +161,9 @@ class EventEditorPage extends JPanel {
             tierModel.addElement(new TicketTier(tier.getTierName(), tier.getPrice(),
                     tier.getInitialCapacity(), tier.getAvailableSeats()));
         }
-        // Copy each custom detail into the list as a CustomField record.
-        detailModel.clear();
-        for (Map.Entry<String, String> detail : event.getCustomDetails().entrySet()) {
-            detailModel.addElement(new CustomField(detail.getKey(), detail.getValue()));
-        }
+        // Copy the custom details too.
+        details = new LinkedHashMap<>(event.getCustomDetails());
+        showDetails();
         clearTierInputs();
         errorLabel.setText(" ");
     }
@@ -177,9 +174,8 @@ class EventEditorPage extends JPanel {
     private void saveEvent() {
         String title = titleField.getText().trim();
         String venue = venueField.getText().trim();
-        LocalDate eventDate = toLocalDate(dateChooser.getDate());          // null if no date picked
-        // Check 1: required fields.
-        if (title.isEmpty() || eventDate == null || venue.isEmpty()) {
+        // Check 1: required fields (getDate() is null when no date was picked).
+        if (title.isEmpty() || dateChooser.getDate() == null || venue.isEmpty()) {
             showError("Required: add an event title, event date, and venue.");
             return;
         }
@@ -194,21 +190,19 @@ class EventEditorPage extends JPanel {
         for (int i = 0; i < tierModel.size(); i++) {
             tiers.add(tierModel.get(i));
         }
-        Map<String, String> details = new LinkedHashMap<>();
-        for (int i = 0; i < detailModel.size(); i++) {
-            details.put(detailModel.get(i).name(), detailModel.get(i).value());
-        }
+        // Turn the picked date into text like "2026-10-15".
+        String eventDate = new SimpleDateFormat("yyyy-MM-dd").format(dateChooser.getDate());
         String status = (String) statusBox.getSelectedItem();
 
         // New event: make an Event object with a random ID like "EVT-3F9A21BC". Editing: reuse it.
         Event event = editingEvent;
         if (event == null) {
             String id = "EVT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-            event = new Event(id, title, eventDate.toString(), venue, tiers, status, hostId);
+            event = new Event(id, title, eventDate, venue, tiers, status, hostId);
         }
         // Copy everything from the form into the Event with its setters.
         event.setTitle(title);
-        event.setDate(eventDate.toString());
+        event.setDate(eventDate);
         event.setVenue(venue);
         event.setTicketTiers(tiers);
         event.setStatus(status);
@@ -254,16 +248,7 @@ class EventEditorPage extends JPanel {
         // How each tier looks in the list, e.g. "VIP  |  KES 3,750  |  12 / 18 available".
         tierList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tierList.setBackground(ViewStyles.SURFACE);
-        tierList.setFixedCellHeight(34);
-        tierList.setCellRenderer((list, tier, index, selected, focus) -> {
-            JLabel row = new JLabel(String.format("%s  |  KES %,.0f  |  %d / %d available",
-                    tier.getTierName(), tier.getPrice(), tier.getAvailableSeats(), tier.getInitialCapacity()));
-            row.setOpaque(true);
-            row.setBorder(new EmptyBorder(4, 8, 4, 8));
-            row.setBackground(selected ? ViewStyles.ACCENT : ViewStyles.SURFACE);
-            row.setForeground(ViewStyles.FOREGROUND);
-            return row;
-        });
+        tierList.setFixedCellHeight(30);                 // Each tier shows as its toString() text
         // Clicking a tier copies it into the inputs so it can be edited.
         tierList.addListSelectionListener(event -> loadSelectedTier());
         JScrollPane listScroll = new JScrollPane(tierList);
@@ -369,7 +354,7 @@ class EventEditorPage extends JPanel {
         listScroll.setPreferredSize(new Dimension(600, 78));
         JButton remove = new JButton("Remove selected detail");
         ViewStyles.styleSecondaryButton(remove);
-        remove.addActionListener(action -> detailModel.removeElement(detailList.getSelectedValue()));
+        remove.addActionListener(action -> removeDetail());
 
         return section("Custom event details (e.g. Dress code: Smart casual)", editor, listScroll, remove);
     }
@@ -382,16 +367,29 @@ class EventEditorPage extends JPanel {
             showError("Enter both a custom detail name and value.");
             return;
         }
-        for (int i = 0; i < detailModel.size(); i++) {
-            if (detailModel.get(i).name().equalsIgnoreCase(name)) {
-                detailModel.remove(i);                       // Remove the old one with this name
-                break;
-            }
-        }
-        detailModel.addElement(new CustomField(name, value));
+        details.put(name, value);                    // Adds it (or replaces one with the same name)
+        showDetails();
         detailNameField.setText("");
         detailValueField.setText("");
         errorLabel.setText(" ");
+    }
+
+    // Removes the selected detail. The list shows "name: value", so the name is the text before ": ".
+    private void removeDetail() {
+        String selected = detailList.getSelectedValue();     // null if nothing is selected
+        if (selected != null) {
+            String name = selected.substring(0, selected.indexOf(": "));
+            details.remove(name);
+            showDetails();
+        }
+    }
+
+    // Refreshes the on-screen list from the details map.
+    private void showDetails() {
+        detailModel.clear();
+        for (String name : details.keySet()) {
+            detailModel.addElement(name + ": " + details.get(name));
+        }
     }
 
     // ---- Layout helpers ----
@@ -477,28 +475,6 @@ class EventEditorPage extends JPanel {
         for (JDateChooser chooser : new JDateChooser[] {dateChooser}) {
             chooser.setDateFormatString("yyyy-MM-dd");               // Show dates as 2026-10-15
             chooser.setPreferredSize(new Dimension(260, 36));
-        }
-    }
-
-    // ---- Date conversions ----
-    // JDateChooser uses the older java.util.Date type; the rest of the app uses LocalDate.
-    // These two helpers convert between them (null stays null).
-
-    private LocalDate toLocalDate(Date date) {
-        return date == null ? null : date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-    }
-
-    private Date toDate(LocalDate date) {
-        return date == null ? null : Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
-    }
-
-    // A record is a short way to write a small, unchangeable data class. Java writes the
-    // constructor and the name() / value() getters for us. toString() is overridden so the
-    // list shows "name: value".
-    private record CustomField(String name, String value) {
-        @Override
-        public String toString() {
-            return name + ": " + value;
         }
     }
 }

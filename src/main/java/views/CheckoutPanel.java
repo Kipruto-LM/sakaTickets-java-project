@@ -211,11 +211,6 @@ public class CheckoutPanel extends JPanel {
 
         ViewStyles.styleInput(nameField);
         ViewStyles.styleInput(emailField);
-        // The spinner contains a text box; if it's the usual kind, style that box too.
-        // "instanceof ... editor" checks the type AND gives us a variable of that type.
-        if (quantitySpinner.getEditor() instanceof JSpinner.DefaultEditor editor) {
-            ViewStyles.styleInput(editor.getTextField());
-        }
         quantitySpinner.addChangeListener(event -> updateTotal());   // Recalculate the total when quantity changes
 
         // Row 0: the heading, across both columns.
@@ -238,17 +233,7 @@ public class CheckoutPanel extends JPanel {
         addField(form, "Ticket Tier", tierSelector, constraints, 5);      // Rows 5-6
         addField(form, "Ticket Quantity", quantitySpinner, constraints, 7);   // Rows 7-8
 
-        // A "renderer" decides how each drop-down item looks. This lambda builds a label like
-        // "VIP - KES 3,750.00 (12 left)", highlighted blue when selected.
-        tierSelector.setRenderer((list, tier, index, selected, focus) -> {
-            JLabel item = new JLabel(tier == null ? "Select a ticket tier"
-                : String.format("%s - KES %,.2f (%d left)", tier.getTierName(), tier.getPrice(), tier.getAvailableSeats()));
-            item.setOpaque(true);
-            item.setForeground(ViewStyles.FOREGROUND);
-            item.setBackground(selected ? ViewStyles.ACCENT : ViewStyles.INPUT);
-            item.setBorder(new EmptyBorder(6, 8, 6, 8));
-            return item;
-        });
+        // The drop-down shows each tier using TicketTier.toString(), e.g. "VIP - KES 3,750 (12 of 18 left)".
         tierSelector.addActionListener(event -> updateTierSelection());   // Picking a tier updates everything
 
         totalLabel.setForeground(ViewStyles.FOREGROUND);
