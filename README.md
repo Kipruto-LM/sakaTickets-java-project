@@ -130,3 +130,37 @@ To test the host workspace, create events, and inspect sales analytics, use the 
 
 * **Password:** `admin123`
 
+
+---
+
+## Database Setup (PostgreSQL)
+
+SakaTickets saves host accounts, events, ticket tiers and bookings in a **PostgreSQL** database. The app creates its own tables the first time it connects, and fills in the sample events and sales if the database is empty.
+
+### 1. Create the database (once per database)
+
+On the computer running PostgreSQL, open a terminal and run (change the password to your own):
+
+```bash
+sudo -u postgres psql -c "CREATE ROLE saka WITH LOGIN PASSWORD 'choose-a-password';" \
+                      -c "CREATE DATABASE sakatickets OWNER saka;"
+```
+
+### 2. Tell the app how to connect
+
+Copy `db.properties.example` to `db.properties` in the project folder and fill in your details:
+
+```properties
+url=jdbc:postgresql://localhost:5432/sakatickets
+user=saka
+password=choose-a-password
+```
+
+`db.properties` is listed in `.gitignore`, so **passwords are never committed**. Every team member keeps their own copy.
+
+### Working as a team
+
+* **Everyone on their own computer:** each person creates their own local database with step 1. Everyone gets the same sample data, but changes stay on their own computer.
+* **Everyone sharing one database:** put the database on a free hosted PostgreSQL service (for example Neon or Supabase), or on one team member's computer that the others can reach over the network. Then everyone uses the same `url`, `user` and `password` in their `db.properties`. Changes made by one person appear for the others when they open the catalogue or log in to the dashboard.
+
+If the app can't connect, it shows a pop-up explaining why (missing `db.properties`, wrong password, server not running) and closes.
