@@ -182,34 +182,39 @@ public class AdminDashboardPanel extends JPanel {
         eventList.repaint();
     }
 
+    // Builds the whole screen: sidebar on the left, workspace (top bar + pages) on the right.
     private void buildPanel(String hostName) {
         setLayout(new BorderLayout());
         setBackground(new Color(0x0F, 0x11, 0x17));
-        add(buildSidebar(hostName), BorderLayout.WEST);
+        add(buildSidebar(hostName), BorderLayout.WEST);  // Sidebar down the left edge
 
-        JPanel workspace = new JPanel(new BorderLayout(0, 18));
+        JPanel workspace = new JPanel(new BorderLayout(0, 18));  // Everything to the right of the sidebar
         workspace.setBackground(new Color(0x0F, 0x11, 0x17));
         workspace.setBorder(new EmptyBorder(24, 28, 24, 28));
-        workspace.add(buildTopBar(), BorderLayout.NORTH);
+        workspace.add(buildTopBar(), BorderLayout.NORTH);  // Page title + "Create New Event" button
 
         pages.setBackground(new Color(0x0F, 0x11, 0x17));
+        // Add every page to the CardLayout, each with a name used by showPage().
         pages.add(buildOverviewPage(hostName), "Overview");
         pages.add(buildManageEventsPage(), "Manage Events");
         pages.add(buildSettingsPage(hostName), "Settings");
         pages.add(buildManagementForm(), "Editor");
+        // The insights page gets three callbacks: Back, Edit (loadEvent) and Export (exportAttendees).
+        // "this::loadEvent" is a method reference: it hands our own method over as an object.
         insightsPanel = new EventAnalyticsPanel(orderManager, () -> showPage("Manage Events"),
                 this::loadEvent, this::exportAttendees);
         pages.add(insightsPanel, "Insights");
         workspace.add(pages, BorderLayout.CENTER);
         add(workspace, BorderLayout.CENTER);
-        showPage("Overview");
+        showPage("Overview");  // Start on the Overview page
     }
 
+    // Builds the left sidebar: logo at the top, menu buttons in the middle, account + log out at the bottom.
     private JPanel buildSidebar(String name) {
         JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setPreferredSize(new Dimension(224, 0));
+        sidebar.setPreferredSize(new Dimension(224, 0));  // 224px wide (height is decided by the layout)
         sidebar.setBackground(new Color(0x17, 0x1B, 0x24));
-        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(0x2A, 0x30, 0x44)));
+        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(0x2A, 0x30, 0x44)));  // 1px line on the right edge only
 
         JPanel brand = new JPanel(new GridLayout(2, 1, 0, 5));
         brand.setOpaque(false);
@@ -223,32 +228,34 @@ public class AdminDashboardPanel extends JPanel {
         brand.add(logo);
         sidebar.add(brand, BorderLayout.NORTH);
 
+        // The menu: one button per page, stacked vertically.
         JPanel navigation = new JPanel();
         navigation.setLayout(new javax.swing.BoxLayout(navigation, javax.swing.BoxLayout.Y_AXIS));
         navigation.setOpaque(false);
         navigation.setBorder(new EmptyBorder(0, 8, 10, 8));
-        for (String item : List.of("Overview", "Manage Events", "Settings")) {
+        for (String item : List.of("Overview", "Manage Events", "Settings")) {  // List.of makes a fixed list of the three page names
             JButton button = new JButton(item);
-            button.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+            button.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);  // Text on the left of the button
             button.setFocusPainted(false);
             button.setBorder(BorderFactory.createEmptyBorder(11, 13, 11, 8));
             button.setOpaque(true);
             button.setAlignmentX(LEFT_ALIGNMENT);
             button.setPreferredSize(new Dimension(196, 44));
             button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
-            button.addActionListener(action -> showPage(item));
-            navButtons.put(item, button);
+            button.addActionListener(action -> showPage(item));  // Clicking shows that page
+            navButtons.put(item, button);  // Remember it so showPage() can highlight it
             navigation.add(button);
             navigation.add(javax.swing.Box.createVerticalStrut(5));
         }
         sidebar.add(navigation, BorderLayout.CENTER);
 
+        // Account box: a coloured square with the host's first letter, their name, and a Log out button.
         JPanel account = new JPanel(new BorderLayout(9, 0));
         account.setOpaque(false);
         account.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(0x2A, 0x30, 0x44)),
                 new EmptyBorder(15, 15, 18, 12)));
-        JLabel avatar = new JLabel(name.isBlank() ? "A" : name.substring(0, 1).toUpperCase());
+        JLabel avatar = new JLabel(name.isBlank() ? "A" : name.substring(0, 1).toUpperCase());  // First letter of the name ("A" if empty)
         avatar.setOpaque(true);
         avatar.setBackground(new Color(0x00, 0xB4, 0xFF));
         avatar.setForeground(Color.WHITE);
@@ -265,12 +272,13 @@ public class AdminDashboardPanel extends JPanel {
         account.add(avatar, BorderLayout.WEST);
         account.add(accountText, BorderLayout.CENTER);
         JButton logout = smallButton("Log out");
-        logout.addActionListener(action -> logoutAction.run());
+        logout.addActionListener(action -> logoutAction.run());  // Callback to MainFrame
         account.add(logout, BorderLayout.SOUTH);
         sidebar.add(account, BorderLayout.SOUTH);
         return sidebar;
     }
 
+    // Builds the top bar: page title and description on the left, a "LIVE" tag and the main button on the right.
     private JPanel buildTopBar() {
         JPanel top = new JPanel(new BorderLayout(14, 0));
         top.setOpaque(false);
@@ -282,6 +290,7 @@ public class AdminDashboardPanel extends JPanel {
         labels.add(pageDescription);
         top.add(labels, BorderLayout.WEST);
         ViewStyles.stylePrimaryButton(createEventButton);
+        // The same button does two jobs: in the editor it says "Back to events", elsewhere it starts a new event.
         createEventButton.addActionListener(action -> {
             if ("Editor".equals(activePage)) {
                 showPage("Manage Events");
@@ -307,12 +316,14 @@ public class AdminDashboardPanel extends JPanel {
         return top;
     }
 
+    // Builds the Overview page, top to bottom: welcome text, three stat cards, two charts,
+    // then "Inventory status" and "Event workspace" boxes. The page scrolls if the window is short.
     private JPanel buildOverviewPage(String name) {
         JPanel page = new JPanel(new BorderLayout(0, 18));
         page.setOpaque(false);
         JPanel overview = new JPanel(new BorderLayout(0, 6));
         overview.setOpaque(false);
-        JLabel welcome = new JLabel("Welcome back, " + name + ".");
+        JLabel welcome = new JLabel("Welcome back, " + name + ".");  // e.g. "Welcome back, Talel."
         ViewStyles.styleHeading(welcome, 18f);
         JLabel note = new JLabel("Your events, ticket sales and host tools are ready.");
         ViewStyles.styleSecondaryText(note, 12f);
@@ -320,7 +331,7 @@ public class AdminDashboardPanel extends JPanel {
         overview.add(note, BorderLayout.SOUTH);
         overview.setAlignmentX(LEFT_ALIGNMENT);
         overview.setMaximumSize(new Dimension(Integer.MAX_VALUE, overview.getPreferredSize().height));
-        JPanel content = new ScrollableColumn();
+        JPanel content = new ScrollableColumn();  // Stretches to the page width, scrolls vertically
         content.setOpaque(false);
         content.setLayout(new javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS));
         JPanel summaryCards = buildSummaryCards();
@@ -331,9 +342,9 @@ public class AdminDashboardPanel extends JPanel {
         content.add(javax.swing.Box.createVerticalStrut(17));
         overviewCharts.setOpaque(false);
         overviewCharts.setAlignmentX(LEFT_ALIGNMENT);
-        content.add(overviewCharts);
+        content.add(overviewCharts);  // Filled in by rebuildOverviewCharts()
         content.add(javax.swing.Box.createVerticalStrut(17));
-        JPanel lower = new JPanel(new GridLayout(1, 2, 14, 0));
+        JPanel lower = new JPanel(new GridLayout(1, 2, 14, 0));  // Two equal boxes side by side
         lower.setOpaque(false);
         lower.setAlignmentX(LEFT_ALIGNMENT);
         lower.setPreferredSize(new Dimension(900, 210));
@@ -342,7 +353,7 @@ public class AdminDashboardPanel extends JPanel {
         lower.add(buildOverviewAction());
         lower.setMinimumSize(new Dimension(0, 210));
         content.add(lower);
-        content.add(javax.swing.Box.createVerticalGlue());
+        content.add(javax.swing.Box.createVerticalGlue());  // Spare space goes at the bottom
         JScrollPane scroll = new JScrollPane(content);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.setOpaque(false);
@@ -352,6 +363,7 @@ public class AdminDashboardPanel extends JPanel {
         return page;
     }
 
+    // The row of three stat cards on the Overview page. Their labels are fields, so updateSummary() can change the numbers.
     private JPanel buildSummaryCards() {
         JPanel cards = new JPanel(new GridLayout(1, 3, 14, 0));
         cards.setOpaque(false);
@@ -363,6 +375,7 @@ public class AdminDashboardPanel extends JPanel {
         return cards;
     }
 
+    // One stat card: caption, big blue number, small hint.
     private JPanel createStatCard(String label, JLabel value, JLabel hint) {
         JPanel card = new JPanel(new GridLayout(3, 1, 0, 5));
         card.setBackground(new Color(0x17, 0x1B, 0x24));
@@ -381,6 +394,8 @@ public class AdminDashboardPanel extends JPanel {
         return card;
     }
 
+    // "Inventory status" box: how many of this host's active events are on sale and sold out.
+    // .count() counts the events that pass the filter; (int) turns the result into an int.
     private JPanel buildStatusSummary() {
         JPanel panel = sectionPanel("Inventory status");
         int onSale = (int) eventManager.getEventsByHostId(hostId).stream()
@@ -392,6 +407,7 @@ public class AdminDashboardPanel extends JPanel {
         return panel;
     }
 
+    // One line in a summary box: label on the left, coloured number on the right.
     private void addSummaryLine(JPanel panel, String label, String value, Color color) {
         JPanel row = new JPanel(new BorderLayout());
         row.setOpaque(false);
@@ -407,6 +423,7 @@ public class AdminDashboardPanel extends JPanel {
         panel.add(row);
     }
 
+    // "Event workspace" box with a button that jumps to the Manage Events page.
     private JPanel buildOverviewAction() {
         JPanel panel = sectionPanel("Event workspace");
         JLabel message = new JLabel("Review your inventory, manage ticket tiers, and follow sales.");
@@ -422,6 +439,7 @@ public class AdminDashboardPanel extends JPanel {
         return panel;
     }
 
+    // An empty card with a heading, used by the two Overview boxes above. Items added later stack under the heading.
     private JPanel sectionPanel(String title) {
         JPanel panel = new JPanel();
         panel.setLayout(new javax.swing.BoxLayout(panel, javax.swing.BoxLayout.Y_AXIS));
