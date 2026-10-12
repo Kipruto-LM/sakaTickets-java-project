@@ -12,12 +12,11 @@ The project is cleanly separated into decoupled packages to ensure maintainabili
     *   `Event.java`: Manages schedule details, host ownership, lifecycle status (`ON_SALE`, `SOLD_OUT`, `PAUSED`, `CANCELLED`), and a collection of `TicketTier` objects[cite: 6].
     *   `TicketTier.java`: Handles multi-tier pricing and capacity management (e.g., VIP vs. Regular)[cite: 8].
     *   `Booking.java`: Represents a guest's digital receipt, tracking quantities, total charges, and a unique 8-character UUID reference[cite: 5].
-    *   `User.java`: Secure host account profile leveraging PBKDF2-HMAC-SHA256 password hashing with a random salt.
-    *   `Ticket.java`: Retained legacy model for backward compatibility[cite: 7].
+    *   `User.java`: A host account (name, email, username and password).
 *   **`controllers` (Business Logic Layer)**: Manages state, persistence, and computation.
     *   `EventManager.java`: Owns the event catalog, filters public unarchived events, and handles cloning/updating[cite: 3].
     *   `OrderManager.java`: Records guest bookings and calculates live event revenue and sell-through percentages[cite: 4].
-    *   `AccountManager.java`: Handles host authentication, credential validation, and atomic local file persistence (`hosts.properties`)[cite: 2].
+    *   `AccountManager.java`: Handles host sign-up, login, and deleting accounts, using the `hosts` table in PostgreSQL.
 *   **`views` (Presentation Layer)**: Java Swing UI components managed via a centralized `CardLayout` inside `MainFrame.java`[cite: 15].
     *   `WelcomePanel.java`: First-run role chooser directing users to either guest browsing or host login[cite: 19].
     *   `EventCatalogPanel.java`: Public grid view featuring responsive image cropping and direct ticket purchasing options[cite: 13].
@@ -32,7 +31,7 @@ The project is cleanly separated into decoupled packages to ensure maintainabili
 ## 2. Key Technical Features
 
 *   **Guest Checkout Workflow:** Removes friction for buyers by eliminating mandatory account registration[cite: 5]. Transactions instantly generate a readable 8-character confirmation code[cite: 4].
-*   **Secure Credential Storage:** Host passwords are never stored in plaintext. They are encrypted using Java's cryptographic libraries, and local data writes use atomic file replacement (`hosts.properties`) to protect against corruption during crashes[cite: 2].
+*   **PostgreSQL Storage:** Host accounts, events, ticket tiers and bookings are saved in a PostgreSQL database, so nothing is lost when the app closes. (To keep this class project simple, passwords are stored as plain text - a real app would store a hash instead.)
 *   **Adaptive 1080p Graphics Engine (`EventVisuals`):** Utilizes custom `Graphics2D` rendering and bicubic aspect-ratio scaling to dynamically fit event imagery across monitors without vertical clipping[cite: 14].
 *   **Dynamic Theme Engine:** Instantly toggles between Dark and Light modes, saving user preferences locally via Java Preferences while dynamically remapping custom component surfaces and borders[cite: 16].
 
@@ -156,11 +155,10 @@ user=saka
 password=choose-a-password
 ```
 
-`db.properties` is listed in `.gitignore`, so **passwords are never committed**. Every team member keeps their own copy.
+`db.properties` is listed in `.gitignore`, so **passwords are never committed**. 
 
-### Working as a team
+### Where the database runs
 
-* **Everyone on their own computer:** each person creates their own local database with step 1. Everyone gets the same sample data, but changes stay on their own computer.
-* **Everyone sharing one database:** put the database on a free hosted PostgreSQL service (for example Neon or Supabase), or on one team member's computer that the others can reach over the network. Then everyone uses the same `url`, `user` and `password` in their `db.properties`. Changes made by one person appear for the others when they open the catalogue or log in to the dashboard.
+The database runs on one computer only (the team lead's). Start the app on that computer to use the saved data.
 
 If the app can't connect, it shows a pop-up explaining why (missing `db.properties`, wrong password, server not running) and closes.
