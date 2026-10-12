@@ -10,6 +10,7 @@ import java.awt.CardLayout;           // Layout that shows one "card" (screen) a
 import javax.swing.JFrame;            // A desktop window
 import javax.swing.JPanel;            // A container for other components
 import models.Booking;                // One purchase
+import models.Event;                  // An event
 import models.User;                   // A host account
 
 /**
@@ -60,10 +61,16 @@ public class MainFrame extends JFrame {
         // Open the PostgreSQL connection once and share it with every controller (dependency injection).
         Connection connection = Database.connect();
         accountManager = new AccountManager(connection);
-        eventManager = new EventManager();
-        orderManager = new OrderManager();
-        // Fill the sample events with realistic past sales.
-        orderManager.seedSampleSales(eventManager.getEvents());
+        eventManager = new EventManager(connection);
+        orderManager = new OrderManager(connection);
+        // Brand-new database: give the sample events realistic past sales, then save each event's
+        // reduced seat counts too. On later runs the sales are already in the database.
+        if (eventManager.isNewDatabase()) {
+            orderManager.seedSampleSales(eventManager.getEvents());
+            for (Event event : eventManager.getEvents()) {
+                eventManager.saveSeatCounts(event);
+            }
+        }
 
         // Each screen object gets the controllers it needs, plus callbacks for moving between pages.
         // "this::showCheckout" is a method reference: it passes our method in as an object.
@@ -114,6 +121,9 @@ public class MainFrame extends JFrame {
 
     // Goes back to the catalogue, refreshing it first so seat counts are up to date.
     private void showCatalog() {
+        // Re-read from the database so changes made by teammates (or another window) show up.
+        eventManager.reload();
+        orderManager.reload();
         catalogPanel.refreshEvents();
         showCard(CATALOG);
     }
@@ -123,6 +133,8 @@ public class MainFrame extends JFrame {
         if (adminDashboardPanel != null) {
             cardPanel.remove(adminDashboardPanel);           // Throw away the previous host's dashboard
         }
+        eventManager.reload();                               // Latest data from the database
+        orderManager.reload();
         adminDashboardPanel = new AdminDashboardPanel(eventManager, orderManager,
                 () -> showCard(WELCOME), user.getUserId(), user.getName());
         cardPanel.add(adminDashboardPanel, ADMIN_DASHBOARD);

@@ -352,8 +352,9 @@ public class CheckoutPanel extends JPanel {
                     "Invalid booking", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        // Step 2: ask the Event to take the seats. It refuses if sales are closed or seats ran out.
-        if (!selectedEvent.purchase(selectedTier.getTierName(), quantity)) {
+        // Step 2: ask the EventManager to take the seats (it saves them in the database).
+        // It refuses if sales are closed or the seats ran out.
+        if (!eventManager.purchaseTickets(selectedEvent, selectedTier.getTierName(), quantity)) {
             JOptionPane.showMessageDialog(this, "Sales are closed or this ticket tier is sold out.", "Purchase unavailable",
                     JOptionPane.WARNING_MESSAGE);
             setEvent(selectedEvent);                          // Refresh the screen with the latest seat counts

@@ -37,7 +37,17 @@ public class Main {
         // "() -> { ... }" is a lambda: a block of code passed in to run later.
         SwingUtilities.invokeLater(() -> {
             // Object creation: "new MainFrame()" builds one window object from the MainFrame class.
-            MainFrame app = new MainFrame();
+            MainFrame app;
+            try {
+                app = new MainFrame();
+            } catch (database.DatabaseException exception) {
+                // Can't reach the database (missing db.properties, wrong password, server off...):
+                // explain what went wrong in a pop-up, then close the program.
+                javax.swing.JOptionPane.showMessageDialog(null, exception.getMessage(),
+                        "SakaTickets - database problem", javax.swing.JOptionPane.ERROR_MESSAGE);
+                System.exit(1);
+                return;
+            }
             app.setVisible(true);   // Show the window
             app.validate();         // Work out the layout of everything inside it
             app.repaint();          // Draw it

@@ -1,6 +1,12 @@
 // This file belongs to the "controllers" package: the classes that hold the app's logic (the C in MVC).
 package controllers;
 
+import database.DatabaseException;   // Our own error type for database problems
+import java.sql.Connection;          // The open link to PostgreSQL
+import java.sql.PreparedStatement;   // A SQL command with "?" blanks we fill in safely
+import java.sql.ResultSet;           // The rows a SELECT query gives back
+import java.sql.SQLException;        // Error thrown by Java's database classes
+import java.sql.Statement;           // Runs a plain SQL command
 import models.Booking;               // One purchase (the receipt)
 import models.Event;                 // The event model
 import models.TicketTier;            // A ticket price level
@@ -15,6 +21,8 @@ import java.util.UUID;               // Random unique IDs (for receipt codes)
 
 /**
  * Controller that records ticket purchases ({@link Booking} objects) and works out sales figures.
+ * Bookings are stored in the "bookings" table in PostgreSQL. They are read into a list when the
+ * app starts (and again on reload()), and each new booking is saved straight away.
  *
  * OOP ideas shown here:
  * - MVC: the checkout screen calls createBooking(), and the admin dashboard calls the
@@ -24,12 +32,31 @@ import java.util.UUID;               // Random unique IDs (for receipt codes)
  *   ready-to-chart numbers, so the screens don't need to know how they are worked out.
  */
 public class OrderManager {
-    private List<Booking> allBookings;   // Every booking ever made, for all events
+    private final Connection connection;                    // The shared database connection
+    private List<Booking> allBookings = new ArrayList<>();  // Every booking, as last read from the database
 
-    // Constructor: starts with an empty list of bookings.
-    public OrderManager() {
-        this.allBookings = new ArrayList<>();
-        // In a complete app, you would load existing bookings from a JSON file here
+    // Constructor: keeps the connection (dependency injection) and reads the bookings.
+    public OrderManager(Connection connection) {
+        this.connection = connection;
+        reload();
+    }
+
+    // Reads every booking from the database again, oldest first.
+    public void reload() {
+        List<Booking> loaded = new ArrayList<>();
+        try (Statement query = connection.createStatement();
+                ResultSet row = query.executeQuery("SELECT * FROM bookings ORDER BY purchased_at")) {
+            while (row.next()) {                                 // One loop per row
+                Booking booking = new Booking(row.getString("booking_id"), row.getString("event_id"),
+                        row.getString("customer_name"), row.getString("customer_email"),
+                        row.getString("tier_name"), row.getInt("quantity"), row.getDouble("total_price"));
+                booking.setPurchasedAt(row.getObject("purchased_at", LocalDateTime.class));   // TIMESTAMP -> LocalDateTime
+                loaded.add(booking);
+            }
+        } catch (SQLException exception) {
+            throw new DatabaseException("Could not load the bookings", exception);
+        }
+        allBookings = loaded;
     }
 
     // Creates a new booking: builds the Booking object with a short random receipt code,
@@ -43,19 +70,15 @@ public class OrderManager {
         // Make the Booking object and add it to the list.
         Booking newBooking = new Booking(uniqueBookingId, eventId, customerName, customerEmail, tierName,
                 quantity, totalPrice);
-        allBookings.add(newBooking);
-
-        // Print to terminal for testing purposes
-        System.out.println("Success! Ticket " + uniqueBookingId + " generated for " + customerName);
-
-        // In a complete app, you would save the updated allBookings list to a JSON file here
+        saveBookings(List.of(newBooking));        // Save it to the database first...
+        allBookings.add(newBooking);              // ...then add it to our list
         return newBooking;
     }
 
     // Fills the sample events with past sales so the catalogue and dashboard look realistic.
-    // Each sale goes through Event.purchase() (which takes the seats) and is recorded as a
-    // Booking, the same way a real checkout works. A fixed Random seed gives the same
-    // sales every time the app starts.
+    // Only used once, on a brand-new database. Each sale goes through Event.purchase() (which takes
+    // the seats from the Event object) and is recorded as a Booking. The bookings are saved here;
+    // MainFrame then saves the events so their new seat counts are stored too.
     public void seedSampleSales(List<Event> events) {
         // Made-up guest names used for the sample bookings.
         String[] guests = {"Wanjiru Kamau", "Otieno Ochieng", "Achieng Atieno", "Kipchoge Rotich",
@@ -67,6 +90,7 @@ public class OrderManager {
         double[] sellThrough = {0.72, 0.58, 0.91, 0.44, 0.66, 0.37, 0.53};
         Random random = new Random(2026);        // The "seed" 2026 makes the random numbers repeatable
         LocalDateTime now = LocalDateTime.now(); // Purchase times are counted back from right now
+        List<Booking> sampleBookings = new ArrayList<>();
         // Outer loop: one pass per sample event (stops early if there are fewer events or percentages).
         for (int index = 0; index < events.size() && index < sellThrough.length; index++) {
             Event event = events.get(index);
@@ -98,13 +122,38 @@ public class OrderManager {
                     Booking booking = new Booking(bookingId, event.getEventId(), guest, email, tier.getTierName(),
                             quantity, tier.getPrice() * quantity);
                     booking.setPurchasedAt(now.minusMinutes(sampleMinutesAgo(tier.getTierName(), random)));
-                    allBookings.add(booking);
+                    sampleBookings.add(booking);
                     sold += quantity;
                 }
             }
         }
+        saveBookings(sampleBookings);              // Save them all to the database
+        allBookings.addAll(sampleBookings);
         // Keep the list in time order, like real purchases arriving one after another.
         allBookings.sort(Comparator.comparing(Booking::getPurchasedAt));
+    }
+
+    // Inserts bookings into the database. A "batch" sends many INSERTs together in one trip,
+    // which is much faster than sending them one by one.
+    private void saveBookings(List<Booking> bookings) {
+        String sql = "INSERT INTO bookings (booking_id, event_id, customer_name, customer_email, tier_name, "
+                + "quantity, total_price, purchased_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement insert = connection.prepareStatement(sql)) {
+            for (Booking booking : bookings) {
+                insert.setString(1, booking.getBookingId());
+                insert.setString(2, booking.getEventId());
+                insert.setString(3, booking.getCustomerName());
+                insert.setString(4, booking.getCustomerEmail());
+                insert.setString(5, booking.getTierName());
+                insert.setInt(6, booking.getQuantity());
+                insert.setDouble(7, booking.getTotalPrice());
+                insert.setObject(8, booking.getPurchasedAt());     // LocalDateTime -> TIMESTAMP
+                insert.addBatch();                                  // Queue this INSERT
+            }
+            insert.executeBatch();                                  // Send them all
+        } catch (SQLException exception) {
+            throw new DatabaseException("Could not save the booking", exception);
+        }
     }
 
     // Picks how long ago a sample sale happened. Early Bird sales are 2-5 weeks old; other
