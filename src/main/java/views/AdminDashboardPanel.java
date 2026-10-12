@@ -69,7 +69,7 @@ public class AdminDashboardPanel extends JPanel {
         String hostName = host.getName();
 
         // "this::showInsights" is a method reference: it hands one of our methods to the page as an object.
-        overviewPage = new OverviewPage(hostName, orderManager, this::showInsights, () -> showPage("Manage Events"));
+        overviewPage = new OverviewPage(hostName, orderManager, () -> showPage("Manage Events"));
         eventListPage = new EventListPage(eventManager, orderManager, hostId,
                 this::editEvent, this::showInsights, this::newEvent, this::refreshEvents);
         editorPage = new EventEditorPage(eventManager, hostId, () -> {   // After saving: refresh and show the list

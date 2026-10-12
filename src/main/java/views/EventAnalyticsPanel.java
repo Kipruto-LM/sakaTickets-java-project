@@ -233,10 +233,8 @@ public class EventAnalyticsPanel extends JPanel {
         double[] values = new double[DAYS];
         for (int i = 0; i < DAYS; i++) values[i] = daily[i];               // int[] -> double[] for the chart
         String[] labels = dayLabels(DAYS);
-        ColumnChart chart = new ColumnChart(values, labels,
-                i -> labels[i] + ": " + daily[i] + (daily[i] == 1 ? " ticket" : " tickets"),
-                ChartPanel.SERIES[0], 5, false, 200);
-        return card("Daily ticket sales", "Tickets sold per day for the last 30 days. Hover a day for details.", chart);
+        ColumnChart chart = new ColumnChart(values, labels, ChartPanel.SERIES[0], 5, false, 200);
+        return card("Daily ticket sales", "Tickets sold per day for the last 30 days", chart);
     }
 
     // Meters: for each tier, seats sold compared with the tier's capacity.
@@ -252,10 +250,8 @@ public class EventAnalyticsPanel extends JPanel {
             sold[i] = tier.getInitialCapacity() - tier.getAvailableSeats();   // Seats taken so far
             capacity[i] = tier.getInitialCapacity();
         }
-        HorizontalBarChart chart = new HorizontalBarChart(names, sold, capacity,
-                value -> String.format("%,.0f sold", value),
-                i -> String.format("%s: %,.0f of %,.0f sold at KES %,.0f each", names[i], sold[i], capacity[i],
-                        tiers.get(i).getPrice()));
+        // null colour = a different colour per tier; " sold" goes after each number.
+        HorizontalBarChart chart = new HorizontalBarChart(names, sold, capacity, "", " sold", null);
         return card("Seats by tier", "Sold compared with each tier's capacity", chart);
     }
 

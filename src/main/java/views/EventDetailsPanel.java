@@ -248,9 +248,7 @@ public class EventDetailsPanel extends JPanel {
         double soldShare = capacity == 0 ? 0 : (double) sold / capacity;   // e.g. 0.75 = 75% sold
 
         // The chart: blue columns, a date label every 3 days, 150px tall.
-        ColumnChart chart = new ColumnChart(values, labels,
-                i -> labels[i] + ": " + daily[i] + (daily[i] == 1 ? " ticket booked" : " tickets booked"),
-                ChartPanel.SERIES[0], 3, false, 150);
+        ColumnChart chart = new ColumnChart(values, labels, ChartPanel.SERIES[0], 3, false, 150);
 
         // Above the chart: the demand badge and a one-line summary.
         JPanel body = new JPanel(new BorderLayout(0, 10));

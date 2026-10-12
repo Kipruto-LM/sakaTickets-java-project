@@ -9,7 +9,6 @@ import java.awt.Font;                       // Font style constants
 import java.awt.GridLayout;                 // Layout with equal-sized cells
 import java.util.ArrayList;                 // A resizable list
 import java.util.List;                      // The general list type
-import java.util.function.Consumer;         // An object holding an action that takes one value
 import javax.swing.BorderFactory;           // Helper for making borders
 import javax.swing.Box;                     // Invisible spacers
 import javax.swing.BoxLayout;               // Stacks items in one column
@@ -30,12 +29,10 @@ import models.TicketTier;                   // A ticket price level
  *   dashboard pages are their own classes (EventListPage, EventEditorPage, EventAnalyticsPanel).
  * - Encapsulation: the labels are private fields. Other classes update them only by calling
  *   refresh(), never by reaching in and changing the text themselves.
- * - Callbacks: clicking a bar runs openInsights, and the button runs openEventList.
- *   AdminDashboardPanel decides what those actions do.
+ * - Callbacks: the button runs openEventList, and AdminDashboardPanel decides what that does.
  */
 class OverviewPage extends JPanel {
     private final OrderManager orderManager;
-    private final Consumer<Event> openInsights;     // Callback: show one event's insights page
     // The numbers that change. They are fields so refresh() can update them.
     private final JLabel capacityValue = new JLabel("0");
     private final JLabel capacityHint = new JLabel(" ");
@@ -47,9 +44,8 @@ class OverviewPage extends JPanel {
     private final JPanel chartArea = new JPanel(new BorderLayout());   // The chart is swapped in here
 
     // Constructor: builds the page once. refresh() fills in the numbers later.
-    OverviewPage(String hostName, OrderManager orderManager, Consumer<Event> openInsights, Runnable openEventList) {
+    OverviewPage(String hostName, OrderManager orderManager, Runnable openEventList) {
         this.orderManager = orderManager;
-        this.openInsights = openInsights;
         setLayout(new BorderLayout());
         setOpaque(false);
 
@@ -146,12 +142,9 @@ class OverviewPage extends JPanel {
                 names[i] = active.get(i).getTitle();
                 money[i] = orderManager.calculateEventRevenue(active.get(i).getEventId());
             }
-            HorizontalBarChart chart = new HorizontalBarChart(names, money, null,
-                    value -> "KES " + ChartPanel.compact(value),
-                    i -> names[i] + ": KES " + String.format("%,.0f", money[i]) + ". Click for insights.",
-                    ChartPanel.SERIES[0]);
-            chart.setClickAction(i -> openInsights.accept(active.get(i)));   // Clicking bar i opens event i
-            chartArea.add(EventAnalyticsPanel.card("Revenue by event", "Click an event to open its insights", chart));
+            // One blue bar per event, with "KES" before each number.
+            HorizontalBarChart chart = new HorizontalBarChart(names, money, null, "KES ", "", ChartPanel.SERIES[0]);
+            chartArea.add(EventAnalyticsPanel.card("Revenue by event", "Money taken by each active event", chart));
         }
         chartArea.setMaximumSize(new Dimension(Integer.MAX_VALUE, chartArea.getPreferredSize().height));
         chartArea.revalidate();
