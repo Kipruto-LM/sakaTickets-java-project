@@ -10,7 +10,6 @@ import java.awt.GridBagConstraints;         // Position/size rules for one item 
 import java.awt.GridBagLayout;              // A flexible grid layout (used for the forms)
 import java.awt.Insets;                     // Spacing around an item
 import java.io.IOException;                 // Error thrown if saving the account file fails
-import java.util.Arrays;                    // Helpers for arrays (comparing and wiping passwords)
 import java.util.Optional;                  // A box that may or may not hold a User
 import java.util.function.Consumer;         // An object holding an action that takes one value
 import javax.swing.BorderFactory;           // Helper for making borders
@@ -241,32 +240,29 @@ public class AdminLoginPanel extends JPanel {
 
     // Asks the controller to check the login. Optional<User> holds a User only when the login works.
     private void authenticate() {
-        char[] password = loginPassword.getPassword();          // Password boxes give back char[], not String
-        try {
-            Optional<User> user = accountManager.authenticate(loginUsername.getText(), password);
-            if (user.isPresent()) {                             // Login worked
-                loginPassword.setText("");                      // Clear the password box
-                loginMessage.setText(" ");                      // Clear any old error
-                loginSuccess.accept(user.get());                // Tell MainFrame: open the dashboard
-            } else {                                            // Wrong username or password
-                loginMessage.setText("Username or password is incorrect.");
-                loginPassword.setText("");
-            }
-        } finally {
-            Arrays.fill(password, '\0');                        // Always wipe the password from memory
+        // Password boxes give back char[] (an array of characters); new String(...) turns it into normal text.
+        String password = new String(loginPassword.getPassword());
+        Optional<User> user = accountManager.authenticate(loginUsername.getText(), password);
+        if (user.isPresent()) {                             // Login worked
+            loginPassword.setText("");                      // Clear the password box
+            loginMessage.setText(" ");                      // Clear any old error
+            loginSuccess.accept(user.get());                // Tell MainFrame: open the dashboard
+        } else {                                            // Wrong username or password
+            loginMessage.setText("Username or password is incorrect.");
+            loginPassword.setText("");
         }
     }
 
     // Asks the controller to create an account. Errors come back as exceptions with friendly messages.
     private void register() {
-        char[] password = passwordField.getPassword();
-        char[] confirmation = confirmPasswordField.getPassword();
+        String password = new String(passwordField.getPassword());
+        String confirmation = new String(confirmPasswordField.getPassword());
+        // Both password boxes must match.
+        if (!password.equals(confirmation)) {
+            registrationMessage.setText("The passwords do not match.");
+            return;
+        }
         try {
-            // Both password boxes must match.
-            if (!Arrays.equals(password, confirmation)) {
-                registrationMessage.setText("The passwords do not match.");
-                return;                                         // "finally" below still runs
-            }
             User user = accountManager.register(nameField.getText(), emailField.getText(),
                     usernameField.getText(), password);
             clearRegistrationForm();
@@ -276,9 +272,6 @@ public class AdminLoginPanel extends JPanel {
             // Either a rule was broken (e.g. "Enter a valid email address.") or saving failed:
             // show the exception's message under the form.
             registrationMessage.setText(exception.getMessage());
-        } finally {
-            Arrays.fill(password, '\0');                        // Wipe both passwords
-            Arrays.fill(confirmation, '\0');
         }
     }
 

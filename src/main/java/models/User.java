@@ -1,9 +1,7 @@
 // This file belongs to the "models" package: the data classes (the M in MVC).
 package models;
 
-import java.security.GeneralSecurityException; // Error type thrown by Java's security classes
 import java.security.SecureRandom;            // Random numbers that are safe for security use
-import java.util.Arrays;                      // Helpers for arrays, e.g. Arrays.fill()
 import java.util.Base64;                      // Turns raw bytes into text (and back) so they can be saved
 import javax.crypto.SecretKeyFactory;         // Runs the password-hashing algorithm
 import javax.crypto.spec.PBEKeySpec;          // Bundles the password, salt and settings for hashing
@@ -23,8 +21,6 @@ import javax.crypto.spec.PBEKeySpec;          // Bundles the password, salt and 
  *   They never see how the checking works.
  * - Static vs instance members: "static" constants and methods belong to the User class
  *   as a whole, while fields like name and email belong to each User object.
- * - Method overloading: authenticate() and setPassword() each come in a String version
- *   and a char[] version. Java picks the right one based on the argument type.
  * - Factory methods: defaultAdmin() and fromPasswordHash() are static methods that
  *   build and return ready-made User objects.
  */
@@ -35,7 +31,6 @@ public class User {
     public static final String DEFAULT_ADMIN_PASSWORD = "admin123";     // Its starting password
     private static final int PASSWORD_ITERATIONS = 120_000;  // How many times to repeat hashing (slow = harder to crack)
     private static final int KEY_LENGTH = 256;               // Size of the hash in bits
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom(); // One shared random generator
 
     // Instance fields: every User object has its own copy of these.
     private String userId;        // Unique ID, e.g. a random UUID
@@ -45,24 +40,11 @@ public class User {
     private String passwordSalt;  // The random salt, saved as Base64 text
     private String passwordHash;  // The hashed password, saved as Base64 text
 
-    // Several overloaded constructors. The shorter ones fill in defaults and pass the
-    // rest of the work on to the full version with this(...).
-
     // Empty constructor: used by fromPasswordHash() below.
     public User() {
     }
 
-    // Name doubles as the username, and the password is empty.
-    public User(String userId, String name, String email) {
-        this(userId, name, email, name, "");
-    }
-
-    // Name doubles as the username.
-    public User(String userId, String name, String email, String password) {
-        this(userId, name, email, name, password);
-    }
-
-    // Full constructor with the password as a String.
+    // Full constructor: copies the details in and hashes the password.
     public User(String userId, String name, String email, String username, String password) {
         this.userId = userId;
         this.name = name;
@@ -71,73 +53,11 @@ public class User {
         setPassword(password);   // Never stores the password directly - setPassword() hashes it
     }
 
-    // Full constructor with the password as a char[] (an array of characters).
-    // Password boxes in Swing give back char[], which can be wiped from memory after use.
-    public User(String userId, String name, String email, String username, char[] password) {
-        this.userId = userId;
-        this.name = name;
-        this.email = email;
-        this.username = username;
-        setPassword(password);
-    }
-
     // Static factory method: called on the class (User.defaultAdmin()), not on an object.
     // Builds the built-in host account used for the sample events.
     public static User defaultAdmin() {
         return new User("admin-001", DEFAULT_ADMIN_USERNAME, "admin@sakatickets.local",
                 DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD);
-    }
-
-    // Overloaded authenticate(): this String version converts the password to char[]
-    // and calls the char[] version below.
-    public boolean authenticate(String password) {
-        if (password == null) {      // No password typed: login fails
-            return false;
-        }
-        char[] characters = password.toCharArray();
-        try {
-            return authenticate(characters);
-        } finally {
-            // "finally" always runs, even after return: wipe the copy of the password from memory.
-            Arrays.fill(characters, '\0');
-        }
-    }
-
-    // Hashes the typed password with the stored salt and compares it with the stored hash.
-    // Returns true only if they match (the password is correct).
-    public boolean authenticate(char[] password) {
-        // Can't check anything if a piece is missing.
-        if (password == null || passwordSalt == null || passwordHash == null) {
-            return false;
-        }
-        byte[] salt = Base64.getDecoder().decode(passwordSalt);        // Text back into bytes
-        byte[] expected = Base64.getDecoder().decode(passwordHash);    // The stored hash
-        byte[] actual = deriveHash(password, salt);                    // Hash of what was typed
-        // isEqual compares in a way that doesn't leak timing hints to attackers.
-        boolean matches = java.security.MessageDigest.isEqual(expected, actual);
-        // Wipe the temporary byte arrays.
-        Arrays.fill(salt, (byte) 0);
-        Arrays.fill(expected, (byte) 0);
-        Arrays.fill(actual, (byte) 0);
-        return matches;
-    }
-
-    // A setter that does more than assign a value: it turns the password into a salt and a hash.
-    public void setPassword(String password) {
-        // Treat a missing password as an empty one, then use the char[] version.
-        char[] characters = password == null ? new char[0] : password.toCharArray();
-        setPassword(characters);
-        Arrays.fill(characters, '\0');   // Wipe the temporary copy
-    }
-
-    // The char[] version does the real work.
-    public void setPassword(char[] password) {
-        byte[] salt = new byte[16];                                   // Room for 16 random bytes
-        SECURE_RANDOM.nextBytes(salt);                                // Fill them with random values
-        this.passwordSalt = Base64.getEncoder().encodeToString(salt); // Save the salt as text
-        byte[] hash = deriveHash(password, salt);                     // Hash password + salt
-        this.passwordHash = Base64.getEncoder().encodeToString(hash); // Save the hash as text
-        Arrays.fill(hash, (byte) 0);                                  // Wipe the raw hash bytes
     }
 
     // Factory method used when loading a saved account: it puts back the stored hash
@@ -154,17 +74,40 @@ public class User {
         return user;
     }
 
+    // Checks a typed password: hashes it with the stored salt and compares the result with the
+    // stored hash. Returns true only if they match (the password is correct).
+    public boolean authenticate(String password) {
+        // Can't check anything if a piece is missing.
+        if (password == null || passwordSalt == null || passwordHash == null) {
+            return false;
+        }
+        String typedHash = hash(password, passwordSalt);
+        return typedHash.equals(passwordHash);
+    }
+
+    // A setter that does more than assign a value: it makes a new random salt and stores the
+    // password's hash. The password itself is never kept.
+    public void setPassword(String password) {
+        if (password == null) {
+            password = "";                                            // Treat a missing password as empty
+        }
+        byte[] saltBytes = new byte[16];                              // Room for 16 random bytes
+        new SecureRandom().nextBytes(saltBytes);                      // Fill them with random values
+        this.passwordSalt = Base64.getEncoder().encodeToString(saltBytes);   // Save the salt as text
+        this.passwordHash = hash(password, passwordSalt);             // Save the hash as text
+    }
+
     // Private helper (abstraction): only User needs to know how hashing works.
-    // Runs PBKDF2 with SHA-256 over the password and salt and returns the hash bytes.
-    private static byte[] deriveHash(char[] password, byte[] salt) {
-        PBEKeySpec spec = new PBEKeySpec(password, salt, PASSWORD_ITERATIONS, KEY_LENGTH);
+    // Runs PBKDF2 with SHA-256 over the password and salt and returns the hash as Base64 text.
+    private static String hash(String password, String salt) {
+        byte[] saltBytes = Base64.getDecoder().decode(salt);         // Salt text back into bytes
+        PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), saltBytes, PASSWORD_ITERATIONS, KEY_LENGTH);
         try {
-            return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).getEncoded();
-        } catch (GeneralSecurityException exception) {
-            // Should never happen on a normal Java install; turn it into an unchecked error.
+            byte[] hashBytes = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).getEncoded();
+            return Base64.getEncoder().encodeToString(hashBytes);
+        } catch (Exception exception) {
+            // Should never happen on a normal Java install; stop with a clear message.
             throw new IllegalStateException("Password hashing is unavailable", exception);
-        } finally {
-            spec.clearPassword();   // Wipe the password copy held inside spec
         }
     }
 

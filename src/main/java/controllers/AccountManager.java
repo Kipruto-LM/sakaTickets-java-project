@@ -58,7 +58,7 @@ public class AccountManager {
     // Public method (part of the class's interface): checks the input, creates a new User
     // object, and saves it. Bad input is reported by throwing an exception with a message.
     // "synchronized" means only one thread can run this at a time, so two sign-ups can't clash.
-    public synchronized User register(String name, String email, String username, char[] password)
+    public synchronized User register(String name, String email, String username, String password)
             throws IOException {
         // Each field must be filled in; requireText also trims extra spaces.
         String cleanName = requireText(name, "Name");
@@ -79,7 +79,7 @@ public class AccountManager {
             throw new IllegalArgumentException("Username must be 3-32 characters using letters, numbers, '.', '_' or '-'.");
         }
         // Rule 4: password must be at least 8 characters.
-        if (password == null || password.length < 8) {
+        if (password == null || password.length() < 8) {
             throw new IllegalArgumentException("Password must be at least 8 characters.");
         }
 
@@ -97,7 +97,7 @@ public class AccountManager {
 
     // Finds the user, then asks that User object to check its own password (delegation).
     // Optional means "maybe a User": empty when the login fails.
-    public synchronized Optional<User> authenticate(String username, char[] password) {
+    public synchronized Optional<User> authenticate(String username, String password) {
         if (username == null || password == null) {
             return Optional.empty();                         // Nothing typed: fail
         }
