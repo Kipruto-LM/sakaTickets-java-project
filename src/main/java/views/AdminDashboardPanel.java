@@ -116,6 +116,9 @@ public class AdminDashboardPanel extends JPanel {
         private Color selectedAccent = ViewStyles.ACCENT;
     // The event currently open in the form, or null when creating a new one.
     private Event editingEvent;
+    // The per-event insights page, and the overview charts that are rebuilt whenever sales change.
+    private EventAnalyticsPanel insightsPanel;
+    private final JPanel overviewCharts = new JPanel(new GridBagLayout());
 
     // Static helper: it doesn't use any fields, so it belongs to the class, not to an object.
     private static JDateChooser createDateChooser() {
@@ -152,6 +155,7 @@ public class AdminDashboardPanel extends JPanel {
             .toList();
         for (Event event : events) eventList.add(createInventoryRow(event));
         updateSummary(allEvents);
+        rebuildOverviewCharts(allEvents);
         java.awt.CardLayout layout = (java.awt.CardLayout) eventState.getLayout();
         layout.show(eventState, allEvents.isEmpty() ? "empty" : events.isEmpty() ? "filtered" : "eventsTable");
         eventList.revalidate();
@@ -173,6 +177,9 @@ public class AdminDashboardPanel extends JPanel {
         pages.add(buildManageEventsPage(), "Manage Events");
         pages.add(buildSettingsPage(hostName), "Settings");
         pages.add(buildManagementForm(), "Editor");
+        insightsPanel = new EventAnalyticsPanel(orderManager, () -> showPage("Manage Events"),
+                this::loadEvent, this::exportAttendees);
+        pages.add(insightsPanel, "Insights");
         workspace.add(pages, BorderLayout.CENTER);
         add(workspace, BorderLayout.CENTER);
         showPage("Overview");
@@ -293,7 +300,7 @@ public class AdminDashboardPanel extends JPanel {
         overview.add(note, BorderLayout.SOUTH);
         overview.setAlignmentX(LEFT_ALIGNMENT);
         overview.setMaximumSize(new Dimension(Integer.MAX_VALUE, overview.getPreferredSize().height));
-        JPanel content = new JPanel();
+        JPanel content = new ScrollableColumn();
         content.setOpaque(false);
         content.setLayout(new javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS));
         JPanel summaryCards = buildSummaryCards();
@@ -301,6 +308,10 @@ public class AdminDashboardPanel extends JPanel {
         content.add(overview);
         content.add(javax.swing.Box.createVerticalStrut(17));
         content.add(summaryCards);
+        content.add(javax.swing.Box.createVerticalStrut(17));
+        overviewCharts.setOpaque(false);
+        overviewCharts.setAlignmentX(LEFT_ALIGNMENT);
+        content.add(overviewCharts);
         content.add(javax.swing.Box.createVerticalStrut(17));
         JPanel lower = new JPanel(new GridLayout(1, 2, 14, 0));
         lower.setOpaque(false);
@@ -312,7 +323,12 @@ public class AdminDashboardPanel extends JPanel {
         lower.setMinimumSize(new Dimension(0, 210));
         content.add(lower);
         content.add(javax.swing.Box.createVerticalGlue());
-        page.add(content, BorderLayout.CENTER);
+        JScrollPane scroll = new JScrollPane(content);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        scroll.getVerticalScrollBar().setUnitIncrement(18);
+        page.add(scroll, BorderLayout.CENTER);
         return page;
     }
 
@@ -480,7 +496,7 @@ public class AdminDashboardPanel extends JPanel {
         header.setBackground(new Color(0x17, 0x1B, 0x24));
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(0x2A, 0x30, 0x44)));
         String[] labels = {"EVENT NAME", "DATE", "CAPACITY", "SOLD", "REMAINING", "STATUS", "ACTION"};
-        double[] weights = {.30, .12, .10, .17, .10, .11, .10};
+        double[] weights = {.27, .11, .09, .16, .09, .10, .18};
         for (int index = 0; index < labels.length; index++) {
             JLabel label = new JLabel(labels[index]);
             label.setForeground(new Color(0x88, 0x96, 0xB3));
@@ -509,11 +525,11 @@ public class AdminDashboardPanel extends JPanel {
         ViewStyles.styleSecondaryText(category, 10f);
         eventInfo.add(name);
         eventInfo.add(category);
-        row.add(eventInfo, columnConstraints(0, .30));
+        row.add(eventInfo, columnConstraints(0, .27));
 
         JLabel date = monoLabel(event.getDate(), new Color(0x88, 0x96, 0xB3));
-        row.add(date, columnConstraints(1, .12));
-        row.add(monoLabel(Integer.toString(capacity), new Color(0xF0, 0xF4, 0xFF)), columnConstraints(2, .10));
+        row.add(date, columnConstraints(1, .11));
+        row.add(monoLabel(Integer.toString(capacity), new Color(0xF0, 0xF4, 0xFF)), columnConstraints(2, .09));
 
         JPanel sales = new JPanel(new GridLayout(2, 1, 0, 3));
         sales.setOpaque(false);
@@ -526,15 +542,15 @@ public class AdminDashboardPanel extends JPanel {
         progress.setBackground(new Color(0x2A, 0x30, 0x44));
         progress.setForeground(percentage >= 100 ? new Color(0xFF, 0x4D, 0x6A) : new Color(0x00, 0xB4, 0xFF));
         sales.add(progress);
-        row.add(sales, columnConstraints(3, .17));
+        row.add(sales, columnConstraints(3, .16));
         row.add(monoLabel(Integer.toString(remaining), remaining == 0
-                ? new Color(0xFF, 0x4D, 0x6A) : new Color(0x00, 0xE0, 0xA0)), columnConstraints(4, .10));
+                ? new Color(0xFF, 0x4D, 0x6A) : new Color(0x00, 0xE0, 0xA0)), columnConstraints(4, .09));
 
         JLabel status = new JLabel(statusText(event.getStatus()));
         status.setForeground(statusColor(event.getStatus()));
         status.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 9f));
-        row.add(status, columnConstraints(5, .11));
-        row.add(buildRowActions(event), columnConstraints(6, .10));
+        row.add(status, columnConstraints(5, .10));
+        row.add(buildRowActions(event), columnConstraints(6, .18));
         for (java.awt.Component component : row.getComponents()) {
             if (component instanceof javax.swing.JComponent swingComponent) {
                 swingComponent.setBorder(new EmptyBorder(10, 10, 10, 6));
@@ -546,6 +562,8 @@ public class AdminDashboardPanel extends JPanel {
     private JPanel buildRowActions(Event event) {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
         actions.setOpaque(false);
+        JButton insights = smallButton("Insights");
+        insights.addActionListener(action -> showInsights(event));
         JButton edit = smallButton("Edit");
         edit.addActionListener(action -> loadEvent(event));
         JButton more = smallButton("···");
@@ -558,11 +576,15 @@ public class AdminDashboardPanel extends JPanel {
         duplicateItem.addActionListener(action -> duplicateEvent(event));
         JMenuItem archiveItem = new JMenuItem(event.isArchived() ? "Restore event" : "Archive event");
         archiveItem.addActionListener(action -> toggleArchive(event));
+        JMenuItem insightsItem = new JMenuItem("View insights");
+        insightsItem.addActionListener(action -> showInsights(event));
+        menu.add(insightsItem);
         menu.add(attendeeItem);
         menu.add(exportItem);
         menu.add(duplicateItem);
         menu.add(archiveItem);
         more.addActionListener(action -> menu.show(more, 0, more.getHeight()));
+        actions.add(insights);
         actions.add(edit);
         actions.add(more);
         return actions;
@@ -631,6 +653,7 @@ public class AdminDashboardPanel extends JPanel {
             case "Overview" -> "Overview";
             case "Settings" -> "Settings";
             case "Editor" -> editingEvent == null ? "Create New Event" : "Edit Event";
+            case "Insights" -> "Event Insights";
             default -> "Active Events Inventory";
         };
         pageTitle.setText(title);
@@ -638,11 +661,13 @@ public class AdminDashboardPanel extends JPanel {
             case "Overview" -> "Your ticket sales at a glance";
             case "Settings" -> "Account and appearance";
             case "Editor" -> "Configure event details and ticket tiers";
+            case "Insights" -> "Sales, tiers and bookings for one event";
             default -> "Manage and monitor all active events";
         });
         createEventButton.setText("Editor".equals(page) ? "Back to events" : "+  Create New Event");
         for (Map.Entry<String, JButton> entry : navButtons.entrySet()) {
-            boolean selected = entry.getKey().equals(page) || "Editor".equals(page) && "Manage Events".equals(entry.getKey());
+            boolean selected = entry.getKey().equals(page)
+                    || ("Editor".equals(page) || "Insights".equals(page)) && "Manage Events".equals(entry.getKey());
             JButton button = entry.getValue();
             button.setBackground(selected ? new Color(0x00, 0xB4, 0xFF, 28) : new Color(0x17, 0x1B, 0x24));
             button.setForeground(selected ? new Color(0x00, 0xB4, 0xFF) : new Color(0x88, 0x96, 0xB3));
@@ -656,6 +681,67 @@ public class AdminDashboardPanel extends JPanel {
         }
         revalidate();
         repaint();
+    }
+
+    // Opens the insights page for one event.
+    private void showInsights(Event event) {
+        insightsPanel.showEvent(event);
+        showPage("Insights");
+    }
+
+    // Overview charts across all of this host's active events. Rebuilt on every refresh so they
+    // always match the latest sales.
+    private void rebuildOverviewCharts(List<Event> allEvents) {
+        overviewCharts.removeAll();
+        List<Event> active = allEvents.stream().filter(event -> !event.isArchived()).toList();
+        if (active.isEmpty()) {
+            overviewCharts.revalidate();
+            return;
+        }
+        String[] names = active.stream().map(Event::getTitle).toArray(String[]::new);
+        double[] revenue = active.stream()
+                .mapToDouble(event -> orderManager.calculateEventRevenue(event.getEventId())).toArray();
+        HorizontalBarChart revenueChart = new HorizontalBarChart(names, revenue, null,
+                value -> "KES " + ChartPanel.compact(value),
+                i -> String.format("%s: KES %,.0f from %,d tickets. Click for insights.", names[i], revenue[i],
+                        orderManager.calculateTotalTicketsSold(active.get(i).getEventId())),
+                ChartPanel.SERIES[0]);
+        revenueChart.setClickAction(i -> showInsights(active.get(i)));
+
+        int days = 30;
+        double[] daily = new double[days];
+        for (Event event : active) {
+            int[] eventDaily = orderManager.getDailyTicketSales(event.getEventId(), days);
+            for (int i = 0; i < days; i++) daily[i] += eventDaily[i];
+        }
+        String[] labels = new String[days];
+        java.time.format.DateTimeFormatter format =
+                java.time.format.DateTimeFormatter.ofPattern("d MMM", java.util.Locale.ENGLISH);
+        for (int i = 0; i < days; i++) labels[i] = LocalDate.now().minusDays(days - 1L - i).format(format);
+        ColumnChart dailyChart = new ColumnChart(daily, labels,
+                i -> String.format("%s: %,.0f tickets across all events", labels[i], daily[i]),
+                ChartPanel.SERIES[0], 5, false, revenueChart.getPreferredSize().height);
+
+        JPanel revenueCard = EventAnalyticsPanel.card("Revenue by event",
+                "Click an event to open its insights", revenueChart);
+        JPanel dailyCard = EventAnalyticsPanel.card("Daily ticket sales",
+                "All active events, last 30 days", dailyChart);
+        GridBagConstraints left = new GridBagConstraints();
+        left.gridx = 0;
+        left.weightx = 1;
+        left.fill = GridBagConstraints.BOTH;
+        left.insets = new Insets(0, 0, 0, 7);
+        GridBagConstraints right = (GridBagConstraints) left.clone();
+        right.gridx = 1;
+        right.weightx = 1.2;
+        right.insets = new Insets(0, 7, 0, 0);
+        revenueCard.setPreferredSize(new Dimension(1, revenueCard.getPreferredSize().height));
+        dailyCard.setPreferredSize(new Dimension(1, revenueCard.getPreferredSize().height));
+        overviewCharts.add(revenueCard, left);
+        overviewCharts.add(dailyCard, right);
+        overviewCharts.setMaximumSize(new Dimension(Integer.MAX_VALUE, overviewCharts.getPreferredSize().height));
+        overviewCharts.revalidate();
+        overviewCharts.repaint();
     }
 
     private boolean matchesDateRange(Event event) {
