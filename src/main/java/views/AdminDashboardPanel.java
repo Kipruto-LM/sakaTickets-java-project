@@ -1,6 +1,7 @@
 // This file belongs to the "views" package: the screens (the V in MVC).
 package views;
 
+import controllers.AccountManager;          // Host accounts (for the Settings page)
 import controllers.EventManager;            // Holds all events
 import controllers.OrderManager;            // Holds all bookings and sales numbers
 import java.awt.BorderLayout;               // Layout with NORTH/SOUTH/EAST/WEST/CENTER areas
@@ -19,6 +20,7 @@ import javax.swing.JPanel;                  // A container
 import javax.swing.SwingConstants;          // Alignment constants such as LEFT
 import javax.swing.border.EmptyBorder;      // Invisible padding
 import models.Event;                        // The event model
+import models.User;                         // The logged-in host
 
 /**
  * The host's dashboard. It is now just the "frame" around the pages: a sidebar on the left
@@ -28,7 +30,7 @@ import models.Event;                        // The event model
  *   "Manage Events" - EventListPage       (filters and one row per event)
  *   "Insights"      - EventAnalyticsPanel (charts for one event)
  *   "Editor"        - EventEditorPage     (create or edit an event)
- *   "Settings"      - a small panel built here
+ *   "Settings"      - SettingsPage        (account details, deleting accounts)
  *
  * OOP ideas shown here:
  * - Inheritance: extends JPanel.
@@ -55,13 +57,16 @@ public class AdminDashboardPanel extends JPanel {
     private final EventListPage eventListPage;
     private final EventEditorPage editorPage;
     private final EventAnalyticsPanel insightsPage;
+    private final SettingsPage settingsPage;
 
     // Constructor: creates the pages, wiring each one's buttons to dashboard methods, then
     // builds the sidebar and top bar around them.
-    public AdminDashboardPanel(EventManager eventManager, OrderManager orderManager, Runnable logoutAction,
-            String hostId, String hostName) {
+    // host = the User who logged in. Their ID decides which events are shown.
+    public AdminDashboardPanel(EventManager eventManager, OrderManager orderManager, AccountManager accountManager,
+            Runnable logoutAction, User host) {
         this.eventManager = eventManager;
-        this.hostId = hostId;
+        this.hostId = host.getUserId();
+        String hostName = host.getName();
 
         // "this::showInsights" is a method reference: it hands one of our methods to the page as an object.
         overviewPage = new OverviewPage(hostName, orderManager, this::showInsights, () -> showPage("Manage Events"));
@@ -73,6 +78,8 @@ public class AdminDashboardPanel extends JPanel {
         });
         insightsPage = new EventAnalyticsPanel(orderManager, () -> showPage("Manage Events"),
                 this::editEvent, eventListPage::exportAttendees);
+        settingsPage = new SettingsPage(accountManager, eventManager, orderManager, host,
+                logoutAction, this::refreshEvents);
 
         // Put the pages into the CardLayout, each with a name.
         pages.setOpaque(false);
@@ -80,7 +87,7 @@ public class AdminDashboardPanel extends JPanel {
         pages.add(eventListPage, "Manage Events");
         pages.add(insightsPage, "Insights");
         pages.add(editorPage, "Editor");
-        pages.add(buildSettingsPage(hostName), "Settings");
+        pages.add(settingsPage, "Settings");
 
         // Workspace = top bar + the pages, to the right of the sidebar.
         JPanel workspace = new JPanel(new BorderLayout(0, 18));
@@ -135,7 +142,8 @@ public class AdminDashboardPanel extends JPanel {
             setTitles(editorPage.isEditingExistingEvent() ? "Edit Event" : "Create New Event",
                     "Configure event details and ticket tiers");
         } else if (page.equals("Settings")) {
-            setTitles("Settings", "Account and appearance");
+            setTitles("Settings", "Your account and host accounts");
+            settingsPage.refresh();                     // Show the latest list of hosts
         } else {
             setTitles("Active Events Inventory", "Manage and monitor all your events");
         }
@@ -233,20 +241,5 @@ public class AdminDashboardPanel extends JPanel {
         top.add(labels, BorderLayout.WEST);
         top.add(createEventButton, BorderLayout.EAST);
         return top;
-    }
-
-    // The Settings page: who is signed in and their account ID.
-    private JPanel buildSettingsPage(String hostName) {
-        JPanel details = new JPanel(new GridLayout(3, 1, 0, 6));
-        details.setOpaque(false);
-        for (String line : new String[] {"Signed in as " + hostName, "Account ID: " + hostId, "Appearance: Dark"}) {
-            JLabel label = new JLabel(line);
-            ViewStyles.styleSecondaryText(label, 13f);
-            details.add(label);
-        }
-        JPanel page = new JPanel(new BorderLayout());
-        page.setOpaque(false);
-        page.add(EventAnalyticsPanel.card("Host account", "Your account details", details), BorderLayout.NORTH);
-        return page;
     }
 }

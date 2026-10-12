@@ -135,8 +135,8 @@ public class MainFrame extends JFrame {
         }
         eventManager.reload();                               // Latest data from the database
         orderManager.reload();
-        adminDashboardPanel = new AdminDashboardPanel(eventManager, orderManager,
-                () -> showCard(WELCOME), user.getUserId(), user.getName());
+        adminDashboardPanel = new AdminDashboardPanel(eventManager, orderManager, accountManager,
+                () -> showCard(WELCOME), user);
         cardPanel.add(adminDashboardPanel, ADMIN_DASHBOARD);
         adminDashboardPanel.refreshEvents();
         showCard(ADMIN_DASHBOARD);
