@@ -1,168 +1,49 @@
-# SakaTickets — System Documentation & Setup Guide
+# SakaTickets
 
-SakaTickets is a modern, feature-rich Java desktop event ticketing application built with **Java Swing**, styled using **FlatLaf**[cite: 16], and designed around a strict Object-Oriented **MVC (Model-View-Controller)** architecture. It supports dual user workflows: public guests who can browse events and seamlessly buy tickets without accounts, and administrative event hosts who manage live inventory, ticket tiers, and revenue analytics.
+A Java desktop app for buying and selling event tickets in Nairobi, built with **Java Swing** and
+**PostgreSQL** as a first-year Object-Oriented Programming group project.
 
-> **New to the project?**
-> - **[SETUP.md](SETUP.md)** — step-by-step install guide for Windows + VS Code (Git, JDK 25, PostgreSQL, running the app).
-> - **[HOW_IT_WORKS.md](HOW_IT_WORKS.md)** — a beginner-friendly tour of the code and the OOP ideas it uses.
+## What it does
 
----
+- **Guests** browse upcoming events, open an event's page, pick a ticket tier (Early Bird, Regular, VIP),
+  and buy tickets — no account needed. They get a receipt with a booking code.
+- **Hosts** log in to a dashboard where they create, edit, archive and delete events, set up ticket tiers,
+  see sales charts, view attendees and export them to CSV.
+- Everything is **saved in PostgreSQL**, so it's still there next time you open the app.
 
-## 1. System Architecture & Core Modules
+## Get started
 
-The project is cleanly separated into decoupled packages to ensure maintainability and adherence to software engineering best practices:
+👉 **[SETUP.md](SETUP.md)** — step-by-step install guide for Windows + VS Code
+(Git, JDK 25, PostgreSQL, and running the app).
 
-*   **`models` (Data Layer)**: Contains core entities representing business objects.
-    *   `Event.java`: Manages schedule details, host ownership, lifecycle status (`ON_SALE`, `SOLD_OUT`, `PAUSED`, `CANCELLED`), and a collection of `TicketTier` objects[cite: 6].
-    *   `TicketTier.java`: Handles multi-tier pricing and capacity management (e.g., VIP vs. Regular)[cite: 8].
-    *   `Booking.java`: Represents a guest's digital receipt, tracking quantities, total charges, and a unique 8-character UUID reference[cite: 5].
-    *   `User.java`: A host account (name, email, username and password).
-*   **`controllers` (Business Logic Layer)**: Manages state, persistence, and computation.
-    *   `EventManager.java`: Owns the event catalog, filters public unarchived events, and handles cloning/updating[cite: 3].
-    *   `OrderManager.java`: Records guest bookings and calculates live event revenue and sell-through percentages[cite: 4].
-    *   `AccountManager.java`: Handles host sign-up, login, and deleting accounts, using the `hosts` table in PostgreSQL.
-*   **`views` (Presentation Layer)**: Java Swing UI components managed via a centralized `CardLayout` inside `MainFrame.java`[cite: 15].
-    *   `WelcomePanel.java`: First-run role chooser directing users to either guest browsing or host login[cite: 19].
-    *   `EventCatalogPanel.java`: Public grid view featuring responsive image cropping and direct ticket purchasing options[cite: 13].
-    *   `CheckoutPanel.java`: Guest-facing purchase form with live subtotal calculation and tier dropdowns[cite: 12].
-    *   `TicketSummaryPanel.java`: Digital receipt confirmation screen displaying the unique transaction UUID[cite: 17].
-    *   `AdminLoginPanel.java`: Secure tabbed interface for host sign-in and registration[cite: 11].
-    *   `AdminDashboardPanel.java`: Comprehensive workspace for hosts to track real-time analytics, modify ticket tiers, export CSV attendee lists, and configure custom styling[cite: 10].
-    *   `ThemeManager.java` & `ViewStyles.java`: Global engine managing Light/Dark mode transitions, user preference persistence, and CSS-style button hover states[cite: 16, 18].
+**Default host login:** username `Talel`, password `admin123`
 
----
+## Learn how it works
 
-## 2. Key Technical Features
+👉 **[HOW_IT_WORKS.md](HOW_IT_WORKS.md)** — a beginner-friendly tour of the code: the OOP ideas it uses
+(classes, constructors, inheritance, polymorphism…), how the pieces fit together, and how the app talks
+to the database.
 
-*   **Guest Checkout Workflow:** Removes friction for buyers by eliminating mandatory account registration[cite: 5]. Transactions instantly generate a readable 8-character confirmation code[cite: 4].
-*   **PostgreSQL Storage:** Host accounts, events, ticket tiers and bookings are saved in a PostgreSQL database, so nothing is lost when the app closes. (To keep this class project simple, passwords are stored as plain text - a real app would store a hash instead.)
-*   **Adaptive 1080p Graphics Engine (`EventVisuals`):** Utilizes custom `Graphics2D` rendering and bicubic aspect-ratio scaling to dynamically fit event imagery across monitors without vertical clipping[cite: 14].
-*   **Dynamic Theme Engine:** Instantly toggles between Dark and Light modes, saving user preferences locally via Java Preferences while dynamically remapping custom component surfaces and borders[cite: 16].
-
----
-
-## 3. Local Setup & Installation Guide
-
-### Prerequisites
-*   **Java Development Kit (JDK):** Version 25 (the project is set to Java 25 in `pom.xml`).
-*   **Git:** For cloning the source code repository.
-
----
-
-### Method A: Setting up in Visual Studio Code (VS Code)
-
-1. **Clone the Repository**
-   Open your terminal or command prompt and clone the project:
-   ```bash
-   git clone [https://github.com/yourusername/sakatickets.git](https://github.com/yourusername/sakatickets.git)
-   cd sakatickets
-
-```markdown
-# Local Setup & Installation Guide
-
-Follow the instructions below to download, configure, and run **SakaTickets** on your local machine using either **Visual Studio Code** or **Apache NetBeans**.
-
----
-
-## Prerequisites
-* **Java Development Kit (JDK):** Version 25 (the project is set to Java 25 in `pom.xml`).
-* **Git:** Installed to clone the project repository.
-
----
-
-## Method A: Setting up in Visual Studio Code (VS Code)
-
-1. **Clone the Repository**
-   Open your terminal or command prompt and clone the project:
-   ```bash
-   git clone [https://github.com/yourusername/sakatickets.git](https://github.com/yourusername/sakatickets.git)
-   cd sakatickets
+## Project layout
 
 ```
-
-2. **Open in VS Code**
-Launch VS Code and open the root project folder:
-```bash
-code .
-
+src/main/java/
+├── Main.java       starts the app
+├── models/         the data: Event, TicketTier, Booking, User
+├── controllers/    the logic: EventManager, OrderManager, AccountManager
+├── database/       the PostgreSQL connection and tables
+└── views/          the screens (Swing panels and charts)
 ```
 
-3. **Install Extensions**
-Ensure you have the official **Extension Pack for Java** (by Microsoft) installed in VS Code to automatically resolve dependencies and build paths.
-4. **Run the Application**
-* Expand the folder structure in the left sidebar and navigate to `src/Main.java`.
+## Built with
 
+| Tool | Used for |
+|---|---|
+| Java 25 + Swing | The app and its screens |
+| FlatLaf | The dark look |
+| JCalendar | The date picker |
+| PostgreSQL + JDBC | Saving data |
+| Maven (`pom.xml`) | Downloading the libraries above |
 
-* Click the **Run** button that automatically appears right above the `public static void main` method. VS Code will compile the packages and launch the application window.
-
-
----
-
-## Method B: Setting up in Apache NetBeans
-
-1. **Create a New Project**
-* Open Apache NetBeans.
-* Go to **File > New Project...** (or press `Ctrl+Shift+N`).
-* Select **Java with Ant** (or Maven, if using a `pom.xml` configuration) and choose **Java Application**. Click **Next**.
-* Name your project `SakaTickets`, set your project location, and uncheck the box labeled **Create Main Class**. Click **Finish**.
-
-
-2. **Import Source Files**
-* Locate the `src` folder inside your cloned repository.
-* Copy all packages (`controllers`, `models`, `views`) and files (`Main.java`) from the repository's `src` folder directly into the `src` directory of your newly created NetBeans project.
-
-
-3. **Configure the Main Class**
-* In NetBeans' left-hand **Projects** tab, right-click the `SakaTickets` project and select **Properties**.
-* Navigate to the **Run** category under Categories.
-* For the **Main Class** field, click **Browse** and select `Main` (or type `Main`). Click **OK**.
-
-
-4. **Build and Run**
-* Click the green **Play** button (Run Project) on the top NetBeans toolbar, or press `F6`. NetBeans will compile and launch the application interface.
-
-
-
----
-
-## Default Admin Credentials
-
-To test the host workspace, create events, and inspect sales analytics, use the default seeded account credentials upon logging in:
-
-* **Username:** `Talel`
-
-* **Password:** `admin123`
-
-
----
-
-## Database Setup (PostgreSQL)
-
-SakaTickets saves host accounts, events, ticket tiers and bookings in a **PostgreSQL** database. The app creates its own tables the first time it connects, and fills in the sample events and sales if the database is empty.
-
-### 1. Create the database (once per database)
-
-On the computer running PostgreSQL, open a terminal and run (change the password to your own):
-
-```bash
-sudo -u postgres psql -c "CREATE ROLE saka WITH LOGIN PASSWORD 'choose-a-password';" \
-                      -c "CREATE DATABASE sakatickets OWNER saka;"
-```
-
-### 2. Tell the app how to connect
-
-Copy `db.properties.example` to `db.properties` in the project folder and fill in your details:
-
-```properties
-url=jdbc:postgresql://localhost:5432/sakatickets
-user=saka
-password=choose-a-password
-```
-
-`db.properties` is listed in `.gitignore`, so **passwords are never committed**. 
-
-### Where the database runs
-
-The database runs on one computer only (the team lead's). Start the app on that computer to use the saved data.
-
-If the app can't connect, it shows a pop-up explaining why (missing `db.properties`, wrong password, server not running) and closes.
+> To keep this class project simple, host passwords are stored as plain text.
+> A real app would store a scrambled "hash" instead.

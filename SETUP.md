@@ -138,11 +138,9 @@ and fills in sample events and sales the first time it runs.**
 3. Choose a folder to save it in (for example `Documents`). If GitHub asks you to sign in, sign in with your
    GitHub account in the browser window that opens.
 4. When VS Code asks **"Would you like to open the cloned repository?"**, click **Open**.
-5. **Switch to the right branch.** The finished project is on the branch **`main2`**.
-   Click the branch name in the **bottom-left corner** of VS Code (it probably says `main`) and pick
-   **`origin/main2`** from the list. The bottom-left should now say `main2`.
+5. **Switch to the right branch.** The finished project is on the branch **`main`**.
 
-   *(Or, in the VS Code terminal — `` Ctrl+` `` — type `git checkout main2`.)*
+   *(Or, in the VS Code terminal — `` Ctrl+` `` — type `git checkout main`.)*
 6. Wait for Java to load the project. In the bottom bar you'll see **Java: Loading…** and then a
    **thumbs-up 👍** or **Java: Ready**. The first time can take a few minutes while it downloads libraries.
    If VS Code asks *"Do you trust the authors of the files in this folder?"*, click **Yes, I trust the authors**.
@@ -194,7 +192,7 @@ and is still there next time you open the app.
 
 When someone pushes new code to GitHub:
 
-1. Make sure you're on the right branch (bottom-left of VS Code says `main2`).
+1. Make sure you're on the right branch (bottom-left of VS Code says `main`).
 2. Click the **Source Control** icon on the left bar (or press `Ctrl+Shift+G`), click the **`···`** menu → **Pull**.
    *(Or in the terminal: `git pull`.)*
 3. Run the app again.
