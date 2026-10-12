@@ -3,7 +3,6 @@ package views;
 
 import com.toedter.calendar.JDateChooser;     // A date picker with a calendar (outside library from pom.xml)
 import controllers.EventManager;              // Saves new and edited events
-import controllers.OrderManager;              // Used to check if a tier already has bookings
 import java.awt.BorderLayout;                 // Layout with NORTH/SOUTH/EAST/WEST/CENTER areas
 import java.awt.Color;                        // An RGB colour
 import java.awt.Dimension;                    // A width and height
@@ -56,7 +55,6 @@ class EventEditorPage extends JPanel {
     private static final String[] STATUSES = {"ON_SALE", "PAUSED", "CANCELLED", "SOLD_OUT"};
 
     private final EventManager eventManager;
-    private final OrderManager orderManager;
     private final String hostId;                 // New events belong to this host
     private final Runnable savedAction;          // Callback: run after a successful save
 
@@ -86,9 +84,8 @@ class EventEditorPage extends JPanel {
     private Event editingEvent;
 
     // Constructor: builds the form once. startNewEvent() / loadEvent() fill it in later.
-    EventEditorPage(EventManager eventManager, OrderManager orderManager, String hostId, Runnable savedAction) {
+    EventEditorPage(EventManager eventManager, String hostId, Runnable savedAction) {
         this.eventManager = eventManager;
-        this.orderManager = orderManager;
         this.hostId = hostId;
         this.savedAction = savedAction;
         setLayout(new BorderLayout());

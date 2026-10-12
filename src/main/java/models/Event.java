@@ -32,7 +32,6 @@ public class Event {
     private LocalDate salesEndDate;           // Last day tickets can be bought (null = no limit)
     private String category = "General";      // e.g. "Music", "Tech"
     private String bannerImagePath = "";      // Picture file shown on the event's cards
-    private String accentColorHex = "#0D6EFD"; // The host's chosen highlight colour
     // Extra facts the host adds, as name -> value pairs, e.g. "Dress code" -> "Smart casual".
     private Map<String, String> customDetails = new LinkedHashMap<>();
     private boolean archived;                 // true = hidden from guests (booleans start as false)
@@ -122,8 +121,6 @@ public class Event {
     public String getBannerImagePath() { return bannerImagePath; }
     // Missing input becomes "" (no picture); otherwise extra spaces are trimmed.
     public void setBannerImagePath(String bannerImagePath) { this.bannerImagePath = bannerImagePath == null ? "" : bannerImagePath.trim(); }
-    public String getAccentColorHex() { return accentColorHex; }
-    public void setAccentColorHex(String accentColorHex) { this.accentColorHex = accentColorHex; }
     // Returns a copy, so callers can read the details but can't change this event's map directly.
     public Map<String, String> getCustomDetails() { return new LinkedHashMap<>(customDetails); }
     // Stores a copy of the given map (or an empty map if none was given).

@@ -152,7 +152,6 @@ public class EventManager {
         copy.setSalesEndDate(source.getSalesEndDate());
         copy.setCategory(source.getCategory());
         copy.setBannerImagePath(source.getBannerImagePath());
-        copy.setAccentColorHex(source.getAccentColorHex());
         copy.setCustomDetails(source.getCustomDetails());
         addEvent(copy);                                // Store it with the others
         return copy;
