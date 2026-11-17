@@ -1,3 +1,4 @@
 {
+    // Let the debugger proceed to launch even when the pre-launch build reports errors.
     "java.debug.settings.onBuildFailureProceed": true
 }

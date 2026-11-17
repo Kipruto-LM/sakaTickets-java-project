@@ -15,8 +15,14 @@ import models.User;
 
 /**
  * Controller for host accounts: validates registration, checks logins, and saves
- * profiles in a small local properties file. The map is the in-memory collection
- * of User objects; this desktop demo does not need a database or concurrent access.
+ * profiles in a small local properties file. SQLite stores event and booking data;
+ * host accounts remain in this separate file for the simplified class project.
+ *
+ * Core concepts:
+ * - Encapsulation: the account file and account map are private implementation details.
+ * - Composition: the map contains User objects managed by this controller.
+ * - Abstraction: views call register/authenticate instead of handling file storage.
+ * - Static helpers: username normalization and text validation do not need an object.
  */
 public class AccountManager {
     // Keep demo data separate from files written by earlier hashed-password versions.
@@ -46,6 +52,17 @@ public class AccountManager {
      *
      * @return the newly registered user
      */
+    /**
+     * Validates input, creates a User, and persists the new profile.
+     *
+     * @param name display name entered by the host
+     * @param email host contact email
+     * @param username case-insensitive sign-in name
+     * @param password demo password stored as plain text for this class project only
+     * @return the newly registered user
+     * @throws IllegalArgumentException if the values fail validation or the username is taken
+     * @throws IOException if the profile cannot be saved
+     */
     public User register(String name, String email, String username, String password)
             throws IOException {
         String cleanName = requireText(name, "Name");
@@ -63,8 +80,8 @@ public class AccountManager {
         if (!cleanUsername.matches("[A-Za-z0-9_.-]{3,32}")) {
             throw new IllegalArgumentException("Username must be 3-32 characters using letters, numbers, '.', '_' or '-'.");
         }
-        if (password == null || password.length() < 8) {
-            throw new IllegalArgumentException("Password must be at least 8 characters.");
+        if (password == null || password.isBlank()) {
+            throw new IllegalArgumentException("Password is required.");
         }
 
         User user = new User(UUID.randomUUID().toString(), cleanName, cleanEmail,
@@ -82,6 +99,11 @@ public class AccountManager {
     }
 
     /** Finds the username without regard to letter case and checks its password. */
+    /**
+     * Looks up a username without regard to case and checks its password.
+     *
+     * @return the matching user, or an empty result when the credentials do not match
+     */
     public Optional<User> authenticate(String username, String password) {
         if (username == null || password == null) {
             return Optional.empty();

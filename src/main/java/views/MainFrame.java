@@ -4,7 +4,7 @@ import controllers.EventManager;
 import controllers.OrderManager;
 import controllers.AccountManager;
 import java.awt.CardLayout;
-import java.awt.Color;
+import java.sql.SQLException;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import models.Booking;
@@ -14,6 +14,13 @@ import models.User;
  * Top-level application window and screen router. It creates one shared set of
  * controllers, then passes them into view panels (dependency injection). The
  * CardLayout switches between screens without creating a separate window each time.
+ *
+ * Core concepts:
+ * - Inheritance: JFrame supplies the native application-window behavior.
+ * - Composition: the window owns its shared controllers and screen panels.
+ * - Dependency injection: controllers and callbacks are passed into each view.
+ * - Encapsulation: navigation methods hide how cards are built and displayed.
+ * - Event-driven callbacks: views request navigation without controlling the window.
  */
 public class MainFrame extends JFrame {
     // Card identifiers keep navigation independent from panel implementation classes.
@@ -45,7 +52,7 @@ public class MainFrame extends JFrame {
     /** 
      * Initializes shared services, configures window dimensions, and opens the welcome screen. 
      */
-    public MainFrame() {
+    public MainFrame() throws SQLException {
         eventManager = new EventManager();
         accountManager = new AccountManager();
         orderManager = new OrderManager();
@@ -74,25 +81,19 @@ public class MainFrame extends JFrame {
         showCard(CATALOG);
     }
 
-    /** Authenticates a user and constructs their personalized admin dashboard. */
+    /** Opens the host dashboard after a successful sign-in. */
     private void showAdminDashboard(User user) {
         activeUser = user;
         createAdminDashboard();
         showCard(ADMIN_DASHBOARD);
     }
 
-    /** 
-     * Re-creates the host's dashboard entirely to ensure it reflects current 
-     * theme/accent preferences and passes in the logout callback.
-     */
+    /** Gives the dashboard shared event data and a callback for logging out. */
     private void createAdminDashboard() {
         if (adminDashboardPanel != null) cardPanel.remove(adminDashboardPanel);
-        adminDashboardPanel = new AdminDashboardPanel(eventManager, orderManager,
-                this::logout, activeUser.getUserId(), activeUser.getName(), this::changeDarkMode,
-                this::changeAccentColor);
+        adminDashboardPanel = new AdminDashboardPanel(eventManager,
+                activeUser.getUserId(), activeUser.getName(), this::logout);
         cardPanel.add(adminDashboardPanel, ADMIN_DASHBOARD);
-        adminDashboardPanel.refreshEvents();
-        ThemeManager.applyPalette(adminDashboardPanel);
     }
 
     /**
@@ -116,24 +117,8 @@ public class MainFrame extends JFrame {
         adminDashboardPanel = null;
         if (activeUser != null) createAdminDashboard();
         
-        // Force the FlatLaf color palette to cascade through all loaded panels
-        ThemeManager.applyPalette(cardPanel);
         cardPanel.revalidate();
         cardPanel.repaint();
-    }
-
-    /** Applies a saved dark/light mode preference and completely rebuilds all panels. */
-    private void changeDarkMode(boolean dark) {
-        ThemeManager.setDarkMode(dark);
-        buildScreens();
-        showCard(activeUser == null ? WELCOME : ADMIN_DASHBOARD);
-    }
-
-    /** Persists a custom accent color choice and rebuilds buttons/navigation. */
-    private void changeAccentColor(Color color) {
-        ThemeManager.setAccentColor(color);
-        buildScreens();
-        showCard(activeUser == null ? WELCOME : ADMIN_DASHBOARD);
     }
 
     /** Clears the active session and returns to the landing page. */
@@ -142,6 +127,7 @@ public class MainFrame extends JFrame {
         showHome();
     }
 
+    /** Returns to the landing card. */
     private void showHome() {
         showCard(WELCOME);
     }

@@ -3,8 +3,11 @@ package models;
 /**
  * A host account that can sign in and manage events.
  *
- * This model demonstrates encapsulation: its data is private, and other classes
- * use getters or checkPassword() instead of changing or inspecting fields directly.
+ * Core concepts:
+ * - Encapsulation: private profile data is read through getters and checkPassword().
+ * - Static factory method: defaultAdmin() creates the built-in demo host.
+ * - Class-level constants: static final values identify the built-in account.
+ * - Object state: each User instance stores one host's profile.
  * Passwords are plain text only to keep this class-project demo simple. Never use
  * this approach for real accounts or real passwords.
  */
@@ -41,10 +44,14 @@ public class User {
         return password != null && password.equals(typedPassword);
     }
 
-    // Getters provide controlled access to this object's private profile data.
+    // Getters provide controlled read access to this object's private profile data.
+    /** Returns the unique ID used to associate this host with events. */
     public String getUserId() { return userId; }
+    /** Returns the host's display name. */
     public String getName() { return name; }
+    /** Returns the host's contact email. */
     public String getEmail() { return email; }
+    /** Returns the host's sign-in name. */
     public String getUsername() { return username; }
     /** Used by the demo account file; do not use plain-text password storage in real apps. */
     public String getPassword() { return password; }

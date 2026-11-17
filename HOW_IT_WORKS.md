@@ -1,17 +1,18 @@
 # How SakaTickets Works (dev)
 
-This guide follows the simplified `dev` branch. SakaTickets is a desktop program: Swing draws the
-screens, Java objects hold the data, and controller classes coordinate the work. There is no
-database in this branch.
+This guide follows the simplified `dev` branch. Swing draws the screens, Java objects hold the
+data, controller classes coordinate the work, and SQLite keeps events and bookings after the
+application closes.
 
 ## Project map
 
 ```text
 Main.java
   └── MainFrame (the window and screen navigation)
-       ├── views/       Swing panels: welcome, catalog, checkout, host dashboard
+       ├── views/       Swing panels: welcome, catalog, checkout, simple host dashboard
        ├── controllers/ account, event, and booking operations
        └── models/      Event, TicketTier, Booking, and User objects
+            database/   SQLite tables and SQL operations
 ```
 
 The folders follow a simple version of **MVC**:
@@ -20,8 +21,9 @@ The folders follow a simple version of **MVC**:
 - **View** (`views/`) displays information and collects user input.
 - **Controller** (`controllers/`) applies rules and changes the models.
 
-For example, `CheckoutPanel` is a view. It asks `EventManager` to find an event and purchase a tier;
-the event's ticket count changes, and `OrderManager` creates a `Booking` receipt.
+For example, `CheckoutPanel` is a view. It asks `EventManager` to find an event, then sends the
+purchase details to `OrderManager`. `OrderManager` asks SQLite to save the `Booking` and update
+ticket inventory together.
 
 ## OOP ideas in this project
 
@@ -33,8 +35,8 @@ seeded "Nairobi Tech Meetup" is one `Event` object. `EventManager` keeps a list 
 ### Encapsulation
 
 `Event` and `User` keep their fields `private`. Other classes use methods such as `getTitle()` or
-`checkPassword()` rather than directly reading a field. `Event.purchase()` keeps the ticket-sale
-rules next to the event data they affect.
+`checkPassword()` rather than directly reading a field. `Event.canPurchase()` describes whether the
+event status permits sales; SQLite checks that rule again when saving a purchase.
 
 ### Constructors and factory methods
 
@@ -68,26 +70,36 @@ button is clicked without needing to know all the details of the screen that wil
 
 ### Starting the application
 
-1. `Main.main()` applies the saved appearance preference.
+1. `Main.main()` sets the FlatLaf dark look and feel.
 2. Swing schedules UI creation on its Event Dispatch Thread.
-3. `MainFrame` creates one `EventManager`, `AccountManager`, and `OrderManager`.
-4. It creates the panels and adds them to a `CardLayout`. Showing another screen swaps the visible
+3. `EventManager` creates the SQLite tables if needed, loads saved events, and inserts the sample
+   events only when the database is empty.
+4. `MainFrame` creates one `EventManager`, `AccountManager`, and `OrderManager`.
+5. It creates the panels and adds them to a `CardLayout`. Showing another screen swaps the visible
    card instead of opening another window.
 
 ### Buying tickets
 
 1. A guest browses events in `EventCatalogPanel` and chooses one.
 2. `MainFrame` opens `CheckoutPanel` for that event.
-3. The checkout asks the event to sell the requested quantity. `TicketTier.purchase()` prevents
-   selling more seats than remain; `Event` updates its sold-out status when appropriate.
-4. `OrderManager` creates a `Booking`, which the receipt panel displays.
+3. `OrderManager` asks SQLite to reduce available seats and insert the booking in one transaction.
+   The database rejects a purchase if sales are closed or not enough seats remain.
+4. SQLite updates the event status to `SOLD_OUT` when all tiers run out and returns the new
+   inventory so the in-memory Event object can match it.
+5. The receipt panel displays the saved `Booking`.
 
 ### Hosting an event
 
 1. `AdminLoginPanel` collects the host's information and calls `AccountManager`.
 2. `AccountManager` checks the input, finds or creates a `User`, and saves host profiles locally.
-3. After sign-in, `MainFrame` creates the host dashboard and passes it the shared managers.
-4. The dashboard uses `EventManager` to create and update events.
+3. After sign-in, `MainFrame` creates the host dashboard and passes it the shared `EventManager`.
+4. The dashboard shows the host's events in a list. Selecting one fills the form for editing.
+5. Saving creates a new event or updates the selected event through `EventManager`. New events get
+   one `Regular` ticket tier to keep setup simple; editing keeps existing tiers unchanged.
+
+The host dashboard intentionally contains only an event list, a small event form, and a logout
+button. Analytics, attendee exports, custom event fields, archive/duplicate actions, and appearance
+settings are not part of this simplified branch.
 
 ## Important files
 
@@ -99,17 +111,20 @@ button is clicked without needing to know all the details of the screen that wil
 | `models/TicketTier.java` | Price and remaining ticket inventory |
 | `models/Booking.java` | Receipt data for a completed purchase |
 | `models/User.java` | Host profile and simple demo password check |
-| `controllers/EventManager.java` | Seed data and event catalog operations |
-| `controllers/OrderManager.java` | In-memory bookings and basic sales totals |
+| `controllers/EventManager.java` | Loads, creates, and updates events through SQLite |
+| `controllers/OrderManager.java` | Saves bookings and updates ticket inventory |
 | `controllers/AccountManager.java` | Host registration, sign-in, and local account file |
+| `database/Database.java` | SQLite connection, table creation, and SQL statements |
 | `views/` | Screens, presentation, and shared UI helpers |
 
 ## Storage and password warning
 
-Events and bookings are in memory, so they reset when the app closes. Host accounts are kept in
-`~/.sakatickets/hosts-demo.properties`.
+Events, ticket tiers, and bookings are stored in the `sakatickets.db` SQLite file in the working
+directory. The first run creates tables and sample events. Host accounts are still kept in
+`~/.sakatickets/hosts-demo.properties`, not in SQLite.
 
-For this class-project branch, a password is just a `String` field on `User` and is written as plain
-text to the local properties file. This deliberately skips password hashing as a teaching
-simplification. Use only the demo credentials; never use this approach for real accounts or real
+For this class-project branch, a password is just a `String` field on `User`, displayed as it is
+typed, and written as plain text to the local properties file. Registration asks for the password
+once, with no confirmation field. This deliberately skips password masking and hashing as teaching
+simplifications. Use only the demo credentials; never use this approach for real accounts or real
 passwords.

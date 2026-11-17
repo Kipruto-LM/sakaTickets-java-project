@@ -9,7 +9,6 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import java.util.Locale;
 import javax.imageio.ImageIO;
@@ -19,11 +18,18 @@ import models.Event;
 /**
  * Shared image helper for the views. It loads artwork and creates Swing panels
  * that paint cropped, rounded images when Swing asks them to redraw.
+ *
+ * Core concepts:
+ * - Abstraction: callers request artwork without handling image loading or painting.
+ * - Encapsulation: image selection and rendering helpers are hidden from the screens.
+ * - Inheritance/polymorphism: CoverImagePanel extends JPanel and overrides paintComponent().
+ * - Static utility methods: the class provides shared behavior without being instantiated.
  */
 final class EventVisuals {
     // Caches the primary hero image to prevent continuous disk reads
     private static final BufferedImage HERO = loadResource("/images/featured-concert.jpg");
 
+    /** Prevents instances because this class only provides static artwork helpers. */
     private EventVisuals() {
     }
 
@@ -71,12 +77,14 @@ final class EventVisuals {
         private final int cornerRadius;
         private final float shade;
 
+        /** Stores rendering settings used later by Swing's paint lifecycle. */
         private CoverImagePanel(BufferedImage image, int cornerRadius, float shade) {
             this.image = image;
             this.cornerRadius = cornerRadius;
             this.shade = shade;
         }
 
+        /** Paints clipped, scaled artwork and a tint whenever Swing redraws the panel. */
         @Override
         protected void paintComponent(Graphics graphics) {
             super.paintComponent(graphics);
@@ -142,23 +150,9 @@ final class EventVisuals {
         g.drawImage(image, x, y, drawWidth, drawHeight, null);
     }
 
-    /** 
-     * Determines which image to load based on the event's category string.
-     * Prefers custom absolute paths if provided by the host.
-     */
+    /** Chooses a bundled image based on the event's category. */
+    /** Selects a bundled image according to the event's normalized category. */
     private static BufferedImage loadEventImage(Event event) {
-        String customPath = event.getBannerImagePath();
-        if (customPath != null && !customPath.isBlank()) {
-            if (customPath.startsWith("/images/")) {
-                BufferedImage bundled = loadResource(customPath);
-                if (bundled != null) return bundled;
-            }
-            try {
-                BufferedImage custom = ImageIO.read(new File(customPath));
-                if (custom != null) return custom;
-            } catch (IOException ignored) {
-            }
-        }
         String category = event.getCategory() == null
                 ? ""
                 : event.getCategory().toLowerCase(Locale.ROOT);
@@ -172,6 +166,7 @@ final class EventVisuals {
     }
 
     /** Helper to load packaged images from the classpath JAR. */
+    /** Reads one image resource from the application's classpath. */
     private static BufferedImage loadResource(String path) {
         try (var input = EventVisuals.class.getResourceAsStream(path)) {
             return input == null ? null : ImageIO.read(input);

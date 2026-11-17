@@ -1,3 +1,4 @@
+<!-- Maven build configuration: project identity, Java level, and required runtime libraries. -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -14,7 +15,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
-    <!-- FlatLaf provides the two application themes; JCalendar provides admin date pickers. -->
+    <!-- FlatLaf provides the application's Swing look and feel. -->
+    <!-- SQLite JDBC embeds the local SQL database in the Java application. -->
     <dependencies>
         <dependency>
             <groupId>com.formdev</groupId>
@@ -22,9 +24,9 @@
             <version>3.6.1</version>
         </dependency>
         <dependency>
-            <groupId>com.toedter</groupId>
-            <artifactId>jcalendar</artifactId>
-            <version>1.4</version>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.50.3.0</version>
         </dependency>
     </dependencies>
 </project>

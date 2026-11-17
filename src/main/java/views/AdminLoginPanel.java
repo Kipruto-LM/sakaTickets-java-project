@@ -15,7 +15,6 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JPasswordField;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
@@ -24,6 +23,13 @@ import models.User;
 /**
  * Host account view. Swing controls collect the form input, while AccountManager
  * owns the registration and sign-in rules. MainFrame supplies navigation callbacks.
+ *
+ * Core concepts:
+ * - Inheritance: extending JPanel makes this class a composable Swing screen.
+ * - Encapsulation: fields and labels store this screen's current form state.
+ * - Composition: tabs contain separate login and registration forms.
+ * - Abstraction: AccountManager handles account rules and file persistence.
+ * - Callbacks: Consumer<User> returns a successful sign-in to MainFrame.
  */
 public class AdminLoginPanel extends JPanel {
     private final AccountManager accountManager;
@@ -31,14 +37,13 @@ public class AdminLoginPanel extends JPanel {
     
     // Each field belongs to this screen, so the two forms can be built separately.
     private final JTextField loginUsername = new JTextField(20);
-    private final JPasswordField loginPassword = new JPasswordField(20);
+    private final JTextField loginPassword = new JTextField(20);
     
     // Registration form controls
     private final JTextField nameField = new JTextField(20);
     private final JTextField emailField = new JTextField(20);
     private final JTextField usernameField = new JTextField(20);
-    private final JPasswordField passwordField = new JPasswordField(20);
-    private final JPasswordField confirmPasswordField = new JPasswordField(20);
+    private final JTextField passwordField = new JTextField(20);
     
     // Status messaging labels
     private final JLabel loginMessage = new JLabel(" ");
@@ -151,22 +156,22 @@ public class AdminLoginPanel extends JPanel {
     /** Constructs the Account Registration tab form. */
     private JPanel buildRegistrationForm() {
         JPanel form = createForm("Create Your Host Account");
-        styleInputs(nameField, emailField, usernameField, passwordField, confirmPasswordField);
+        styleInputs(nameField, emailField, usernameField, passwordField);
         addField(form, "Name", nameField, 1);
         addField(form, "Email", emailField, 2);
         addField(form, "Username", usernameField, 3);
-        addField(form, "Password (8+ characters)", passwordField, 4);
-        addField(form, "Confirm password", confirmPasswordField, 5);
+        addField(form, "Password (visible)", passwordField, 4);
         styleMessage(registrationMessage);
-        addMessage(form, registrationMessage, 6);
+        addMessage(form, registrationMessage, 5);
         
         JButton submit = new JButton("Create Account");
         ViewStyles.stylePrimaryButton(submit);
         submit.addActionListener(action -> register());
-        addAction(form, submit, 7);
+        addAction(form, submit, 6);
         return form;
     }
 
+    /** Creates a GridBagLayout form with a heading row at the top. */
     private JPanel createForm(String title) {
         JPanel form = new JPanel(new GridBagLayout());
         form.setBackground(new Color(0x17, 0x1B, 0x24));
@@ -184,6 +189,7 @@ public class AdminLoginPanel extends JPanel {
         return form;
     }
 
+    /** Places one label and input component in the requested GridBagLayout row. */
     private void addField(JPanel form, String label, java.awt.Component input, int row) {
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridy = row;
@@ -200,6 +206,7 @@ public class AdminLoginPanel extends JPanel {
         form.add(input, constraints);
     }
 
+    /** Places a form action button at the right side of its row. */
     private void addAction(JPanel form, JButton button, int row) {
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 1;
@@ -209,11 +216,13 @@ public class AdminLoginPanel extends JPanel {
         form.add(button, constraints);
     }
 
+    /** Applies the shared error-message appearance to a status label. */
     private void styleMessage(JLabel message) {
         message.setForeground(new Color(0xFF, 0x4D, 0x6A));
         message.setFont(ViewStyles.BODY_FONT.deriveFont(java.awt.Font.BOLD, 12f));
     }
 
+    /** Adds a status label to the input column at the requested form row. */
     private void addMessage(JPanel form, JLabel message, int row) {
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 1;
@@ -223,6 +232,7 @@ public class AdminLoginPanel extends JPanel {
         form.add(message, constraints);
     }
 
+    /** Applies ViewStyles input formatting to every provided text field. */
     private void styleInputs(JTextField... fields) {
         for (JTextField field : fields) {
             ViewStyles.styleInput(field);
@@ -231,8 +241,7 @@ public class AdminLoginPanel extends JPanel {
 
     /** Sends the entered values to the account controller for verification. */
     private void authenticate() {
-        String password = new String(loginPassword.getPassword());
-        Optional<User> user = accountManager.authenticate(loginUsername.getText(), password);
+        Optional<User> user = accountManager.authenticate(loginUsername.getText(), loginPassword.getText());
         if (user.isPresent()) {
             loginPassword.setText("");
             loginMessage.setText(" ");
@@ -243,20 +252,11 @@ public class AdminLoginPanel extends JPanel {
         }
     }
 
-    /**
-     * Checks that both password entries match, then lets AccountManager validate
-     * and save the new User.
-     */
+    /** Sends the visible password and profile fields to AccountManager for validation and saving. */
     private void register() {
         try {
-            String password = new String(passwordField.getPassword());
-            String confirmation = new String(confirmPasswordField.getPassword());
-            if (!password.equals(confirmation)) {
-                registrationMessage.setText("The passwords do not match.");
-                return;
-            }
             User user = accountManager.register(nameField.getText(), emailField.getText(),
-                    usernameField.getText(), password);
+                    usernameField.getText(), passwordField.getText());
             clearRegistrationForm();
             registrationMessage.setText(" ");
             loginSuccess.accept(user);
@@ -265,11 +265,11 @@ public class AdminLoginPanel extends JPanel {
         }
     }
 
+    /** Clears all registration fields after a successful account creation. */
     private void clearRegistrationForm() {
         nameField.setText("");
         emailField.setText("");
         usernameField.setText("");
         passwordField.setText("");
-        confirmPasswordField.setText("");
     }
 }

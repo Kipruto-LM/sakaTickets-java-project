@@ -1,7 +1,9 @@
 {
+    // Debugger launch profile for the application's Main class.
     "version": "0.2.0",
     "configurations": [
         {
+            // Compile the Maven project first, then launch the Swing application.
             "type": "java",
             "name": "Run SakaTickets Main",
             "request": "launch",

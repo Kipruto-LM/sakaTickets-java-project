@@ -1,73 +1,58 @@
 package controllers;
 
+import database.Database;
+import java.sql.SQLException;
+import java.util.Optional;
 import models.Booking;
-import java.util.ArrayList;
-import java.util.List;
+import models.Event;
+import models.TicketTier;
 import java.util.UUID;
 
 /**
- * Controller for guest purchases. It creates Booking model objects, keeps them
- * in memory, and calculates simple event sales totals for the host dashboard.
+ * Saves guest bookings and updates ticket inventory in SQLite.
+ *
+ * Core concepts:
+ * - Abstraction: the checkout view calls one booking operation instead of issuing SQL.
+ * - Composition: a Booking records the Event and TicketTier chosen by the guest.
+ * - Optional: a rejected purchase is represented explicitly without a fake receipt.
  */
 public class OrderManager {
-    // In-memory list acting as our database for the MVP
-    private List<Booking> allBookings;
-
-    public OrderManager() {
-        this.allBookings = new ArrayList<>();
-        // Note: For persistent storage, load from a bookings.json file here
-    }
-
-    /** 
-     * Generates a short, user-friendly 8-character receipt UUID, creates the booking,
-     * and saves it to the in-memory database.
-     * 
-     * @return The finalized Booking object, ready to be displayed on the TicketSummaryPanel.
+    /**
+     * Makes a receipt and asks the database to save it with the inventory update.
+     * An empty result means the event or tier could not accept this purchase.
+     *
+     * @param event event being purchased
+     * @param customerName guest name for the receipt
+     * @param customerEmail guest email for the receipt
+     * @param tierName selected ticket tier
+     * @param quantity positive number of tickets requested
+     * @param totalPrice calculated price for the requested tickets
+     * @return a saved receipt, or empty when sales are closed or inventory is insufficient
+     * @throws IllegalArgumentException if quantity is not positive
+     * @throws SQLException if SQLite reports a database error
      */
-    public Booking createBooking(String eventId, String customerName, String customerEmail, String tierName,
-            int quantity, double totalPrice) {
-                
-        // Generate an 8-character alphanumeric string (e.g., "A1B2C3D4")
+    public Optional<Booking> createBooking(Event event, String customerName, String customerEmail,
+            String tierName, int quantity, double totalPrice) throws SQLException {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Ticket quantity must be positive.");
+        }
         String uniqueBookingId = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        
-        Booking newBooking = new Booking(uniqueBookingId, eventId, customerName, customerEmail, tierName,
+        Booking booking = new Booking(uniqueBookingId, event.getEventId(), customerName, customerEmail, tierName,
                 quantity, totalPrice);
-        
-        allBookings.add(newBooking);
-        System.out.println("Success! Ticket " + uniqueBookingId + " generated for " + customerName);
-        
-        return newBooking;
-    }
 
-    /** Retrieves the entire transaction history (useful for master admin reporting). */
-    public List<Booking> getAllBookings() {
-        return allBookings;
-    }
+        Database.PurchaseResult result = Database.saveBooking(booking, tierName, quantity);
+        if (!result.purchased()) {
+            return Optional.empty();
+        }
 
-    /** 
-     * Filters the master booking list to return only transactions for a specific event. 
-     */
-    public List<Booking> getBookingsByEvent(String eventId) {
-        List<Booking> eventBookings = new ArrayList<>();
-        for (Booking b : allBookings) {
-            if (b.getEventId().equals(eventId)) {
-                eventBookings.add(b);
+        // Keep the screen's Event object aligned with the inventory saved in SQLite.
+        for (TicketTier tier : event.getTicketTiers()) {
+            if (tierName.equals(tier.getTierName())) {
+                tier.setAvailableSeats(result.tierAvailableSeats());
+                break;
             }
         }
-        return eventBookings;
-    }
-
-    /** 
-     * Calculates total gross revenue for an event by summing the prices of all related bookings. 
-     */
-    public double calculateEventRevenue(String eventId) {
-        return getBookingsByEvent(eventId).stream().mapToDouble(Booking::getTotalPrice).sum();
-    }
-
-    /** 
-     * Calculates the total physical ticket quantity sold for an event. 
-     */
-    public int calculateTotalTicketsSold(String eventId) {
-        return getBookingsByEvent(eventId).stream().mapToInt(Booking::getQuantity).sum();
+        event.setStatus(result.eventStatus());
+        return Optional.of(booking);
     }
 }

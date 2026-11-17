@@ -1,3 +1,11 @@
+# Maven's generated build output and manually compiled Java bytecode.
 target/
 *.class
+
+# Local database connection settings may contain machine-specific credentials.
 db.properties
+
+# SQLite's runtime data file and optional write-ahead logging sidecars.
+sakatickets.db
+sakatickets.db-shm
+sakatickets.db-wal

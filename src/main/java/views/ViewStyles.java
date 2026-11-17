@@ -10,6 +10,11 @@ import javax.swing.JTextField;
 /**
  * Shared style helpers for the views. Keeping colors, fonts, and common button
  * styles here avoids repeating the same presentation code in every screen.
+ *
+ * Core concepts:
+ * - Encapsulation: palette and typography values are centralized in one class.
+ * - Abstraction: screens request a style by role instead of repeating Swing settings.
+ * - Static utility methods: the class is not instantiated and shares common behavior.
  */
 final class ViewStyles {
     // Global palette tokens
@@ -26,25 +31,9 @@ final class ViewStyles {
     static final Font BODY_FONT = new Font("Ubuntu Sans", Font.PLAIN, 14);
     static final Font DATA_FONT = new Font("Ubuntu Mono", Font.PLAIN, 12);
 
+    /** Prevents instances because all style values and methods are shared statically. */
     private ViewStyles() {
         // Private constructor prevents instantiation of this utility class.
-    }
-
-    /**
-     * Updates the shared semantic colors based on the active theme preference.
-     * 
-     * @param dark   True if the application is in Dark Mode, false for Light Mode.
-     * @param accent The user-selected accent color for primary actions.
-     */
-    static void setThemeColors(boolean dark, Color accent) {
-        // High-contrast Light Mode applies pure white surfaces on an off-white background
-        BACKGROUND = dark ? new Color(0x0F, 0x11, 0x17) : new Color(0xF3, 0xF4, 0xF6);
-        SURFACE = dark ? new Color(0x17, 0x1B, 0x24) : new Color(0xFF, 0xFF, 0xFF);
-        INPUT = dark ? new Color(0x2A, 0x2A, 0x2A) : new Color(0xF9, 0xFA, 0xFB);
-        FOREGROUND = dark ? new Color(0xF0, 0xF4, 0xFF) : new Color(0x11, 0x18, 0x27);
-        MUTED = dark ? new Color(0x88, 0x96, 0xB3) : new Color(0x6B, 0x72, 0x80);
-        OUTLINE = dark ? new Color(0x2A, 0x30, 0x44) : new Color(0xE5, 0xE7, 0xEB);
-        ACCENT = accent == null ? new Color(0x00, 0xB4, 0xFF) : accent;
     }
 
     /**

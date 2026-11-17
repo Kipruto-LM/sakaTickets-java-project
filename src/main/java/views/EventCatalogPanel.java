@@ -22,23 +22,31 @@ import javax.swing.border.EmptyBorder;
 import models.Event;
 import models.TicketTier;
 
-/** 
+/**
  * Public, guest-facing event browser. The panel asks EventManager for event
  * data and turns each Event model into a Swing card for the guest to select.
+ *
+ * Core concepts:
+ * - Inheritance: JPanel makes this catalog one view in the main window.
+ * - Composition: the catalog contains a scroll pane and one card per Event.
+ * - Abstraction: EventManager supplies data without exposing SQLite operations.
+ * - Callbacks: selecting a card sends its event ID to MainFrame for checkout.
+ * - Polymorphism: nested Swing panels override painting to customize card rendering.
  */
 public class EventCatalogPanel extends JPanel {
     private final EventManager eventManager;
     private final Consumer<String> checkoutAction;
     private final JPanel eventList = new JPanel();
 
-    /** 
+    /**
      * Constructs the catalog, sets up the scrolling viewport, and builds the initial event grid.
-     * 
-     * @param eventManager   The global catalog controller.
-     * @param checkoutAction Callback to trigger the Checkout panel, passing the selected event ID.
-     * @param backToHome     Callback to return to the Welcome screen.
+     *
+     * @param eventManager the global catalog controller
+     * @param checkoutAction callback that opens checkout for the selected event ID
+     * @param backToHome callback to return to the welcome screen
      */
-    public EventCatalogPanel(EventManager eventManager, Consumer<String> checkoutAction, Runnable backToHome) {
+    public EventCatalogPanel(EventManager eventManager, Consumer<String> checkoutAction,
+            Runnable backToHome) {
         this.eventManager = eventManager;
         this.checkoutAction = checkoutAction;
         setLayout(new BorderLayout(0, 16));
@@ -47,7 +55,6 @@ public class EventCatalogPanel extends JPanel {
 
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        
         JPanel headings = new JPanel(new GridLayout(2, 1, 0, 4));
         headings.setOpaque(false);
         JLabel heading = new JLabel("Upcoming Events");
@@ -57,14 +64,13 @@ public class EventCatalogPanel extends JPanel {
         headings.add(heading);
         headings.add(subheading);
         header.add(headings, BorderLayout.WEST);
-        
+
         JButton backButton = new JButton("Back to Home");
         ViewStyles.styleSecondaryButton(backButton);
         backButton.addActionListener(action -> backToHome.run());
         header.add(backButton, BorderLayout.EAST);
         add(header, BorderLayout.NORTH);
 
-        // A flexible grid layout that automatically wraps items based on the available width
         eventList.setLayout(new GridLayout(0, 3, 15, 15));
         eventList.setBackground(ViewStyles.BACKGROUND);
         eventList.setBorder(new EmptyBorder(2, 1, 14, 1));
@@ -78,9 +84,10 @@ public class EventCatalogPanel extends JPanel {
         scrollPane.getViewport().setBackground(ViewStyles.BACKGROUND);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         add(scrollPane, BorderLayout.CENTER);
-        
-        // Listen for window resizes to recalculate the aspect ratio of the event cover images
+
+        // Recalculate image proportions when the screen is resized.
         addComponentListener(new ComponentAdapter() {
+            /** Resizes card artwork after the catalog dimensions change. */
             @Override
             public void componentResized(ComponentEvent event) {
                 resizeEventArtwork();
@@ -91,25 +98,24 @@ public class EventCatalogPanel extends JPanel {
     /** Clears and rebuilds the cards using the current public event list. */
     public void refreshEvents() {
         eventList.removeAll();
-        List<Event> events = eventManager.getPublicEvents();
+        List<Event> events = eventManager.getEvents();
         for (Event event : events) {
             eventList.add(createEventCard(event));
         }
-        
+
         if (events.isEmpty()) {
-            JLabel empty = new JLabel("No public events right now. Please check back soon.", JLabel.CENTER);
+            JLabel empty = new JLabel("No public events right now. Please check back soon.",
+                    JLabel.CENTER);
             ViewStyles.styleSecondaryText(empty, 15f);
             eventList.add(empty);
         }
-        
         eventList.revalidate();
         eventList.repaint();
         resizeEventArtwork();
     }
 
-    /** 
-     * Dynamically adjusts the height of the image masks inside each card 
-     * to maintain a consistent aspect ratio when the grid columns stretch.
+    /**
+     * Adjusts the height of image panels to maintain their aspect ratio as cards resize.
      */
     private void resizeEventArtwork() {
         if (eventList.getWidth() <= 0) return;
@@ -124,9 +130,7 @@ public class EventCatalogPanel extends JPanel {
         eventList.revalidate();
     }
 
-    /** 
-     * Constructs a single event card displaying artwork, schedule details, and pricing.
-     */
+    /** Constructs a single event card displaying artwork, schedule details, and pricing. */
     private JPanel createEventCard(Event event) {
         JPanel card = new RoundedCardPanel();
         card.setLayout(new BorderLayout(0, 9));
@@ -135,33 +139,27 @@ public class EventCatalogPanel extends JPanel {
                 BorderFactory.createLineBorder(ViewStyles.OUTLINE),
                 BorderFactory.createEmptyBorder(8, 8, 10, 8)));
         card.putClientProperty("FlatLaf.style", "arc: 10");
-        
         JPanel artwork = EventVisuals.event(event, 132, 8);
-        card.putClientProperty("eventArtwork", artwork); // Tag the artwork for resizing logic
+        card.putClientProperty("eventArtwork", artwork);
         card.add(artwork, BorderLayout.NORTH);
 
         JPanel details = new JPanel();
         details.setOpaque(false);
         details.setLayout(new BoxLayout(details, BoxLayout.Y_AXIS));
-        
         JLabel title = new JLabel(event.getTitle());
         ViewStyles.styleHeading(title, 15f);
         title.setAlignmentX(LEFT_ALIGNMENT);
-        
         JLabel category = new JLabel(event.getCategory().toUpperCase(java.util.Locale.ROOT));
         category.setForeground(new Color(0x00, 0xE5, 0xC4));
         category.setFont(ViewStyles.DATA_FONT.deriveFont(Font.BOLD, 9f));
         category.setAlignmentX(LEFT_ALIGNMENT);
-        
         JLabel date = new JLabel(event.getDate());
         ViewStyles.styleSecondaryText(date, 11f);
         date.setBorder(new EmptyBorder(5, 0, 1, 0));
         date.setAlignmentX(LEFT_ALIGNMENT);
-        
         JLabel venue = new JLabel(event.getVenue());
         ViewStyles.styleSecondaryText(venue, 11f);
         venue.setAlignmentX(LEFT_ALIGNMENT);
-        
         details.add(title);
         details.add(category);
         details.add(date);
@@ -170,23 +168,19 @@ public class EventCatalogPanel extends JPanel {
         JPanel purchase = new JPanel();
         purchase.setOpaque(false);
         purchase.setLayout(new BoxLayout(purchase, BoxLayout.Y_AXIS));
-        
-        // Find the cheapest available ticket tier to show as the "From KES X" price
-        double lowestPrice = event.getTicketTiers().stream().mapToDouble(TicketTier::getPrice)
-                .min().orElse(0.0);
-                
+        double lowestPrice = event.getTicketTiers().stream()
+                .mapToDouble(TicketTier::getPrice).min().orElse(0.0);
         JLabel price = new JLabel(String.format("From KES %,.0f", lowestPrice));
         price.setForeground(ViewStyles.FOREGROUND);
         price.setFont(price.getFont().deriveFont(Font.BOLD, 16f));
         price.setAlignmentX(RIGHT_ALIGNMENT);
-        
         JLabel seats = new JLabel(event.getAvailableSeats() + " tickets remaining");
         ViewStyles.styleSecondaryText(seats, 11f);
         seats.setAlignmentX(RIGHT_ALIGNMENT);
         seats.setBorder(new EmptyBorder(4, 0, 10, 0));
-        
+
         JButton bookButton = new JButton("Book Now");
-        boolean salesOpen = event.canPurchaseOn(java.time.LocalDate.now()) && event.getAvailableSeats() > 0;
+        boolean salesOpen = event.canPurchase() && event.getAvailableSeats() > 0;
         if (salesOpen) {
             ViewStyles.stylePrimaryButton(bookButton);
         } else {
@@ -194,10 +188,8 @@ public class EventCatalogPanel extends JPanel {
             bookButton.setText("Sales Closed");
             bookButton.setEnabled(false);
         }
-        
         bookButton.setAlignmentX(RIGHT_ALIGNMENT);
         bookButton.addActionListener(action -> checkoutAction.accept(event.getEventId()));
-        
         purchase.add(price);
         purchase.add(seats);
         purchase.add(bookButton);
@@ -205,26 +197,24 @@ public class EventCatalogPanel extends JPanel {
         JPanel east = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         east.setOpaque(false);
         east.add(purchase);
-        
         JPanel info = new JPanel(new BorderLayout(0, 5));
         info.setOpaque(false);
         info.add(details, BorderLayout.CENTER);
         info.add(east, BorderLayout.EAST);
         card.add(info, BorderLayout.CENTER);
-        
         return card;
     }
 
-    /** 
-     * A custom panel that overrides Swing's default paint cycle to ensure 
-     * the physical background of the card has cleanly rounded corners 
-     * before any child components are drawn on top of it.
+    /**
+     * Custom panel that paints a rounded background before Swing paints its children.
      */
     private static class RoundedCardPanel extends JPanel {
+        /** Creates a transparent panel so the custom rounded shape remains visible. */
         private RoundedCardPanel() {
             setOpaque(false);
         }
 
+        /** Paints the rounded background and then delegates to Swing's normal painting. */
         @Override
         protected void paintComponent(java.awt.Graphics graphics) {
             java.awt.Graphics2D graphics2D = (java.awt.Graphics2D) graphics.create();

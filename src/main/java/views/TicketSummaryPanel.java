@@ -19,6 +19,13 @@ import models.Event;
 /**
  * Receipt view shown after a successful checkout. It displays values from a
  * Booking model and looks up the related Event for its title, date, and artwork.
+ *
+ * Core concepts:
+ * - Inheritance: JPanel allows the receipt to be one card in the main window.
+ * - Encapsulation: private labels hold the presentation state for one receipt.
+ * - Composition: the receipt combines booking details, event details, and artwork.
+ * - Object references by ID: EventManager finds the Event linked by Booking.eventId.
+ * - Callback: the browse action returns navigation control to MainFrame.
  */
 public class TicketSummaryPanel extends JPanel {
     private final EventManager eventManager;
@@ -34,6 +41,7 @@ public class TicketSummaryPanel extends JPanel {
     private final JLabel count = new JLabel("-");
     private final JLabel total = new JLabel("KES 0.00");
 
+    /** Creates the receipt screen with event lookup and return-navigation dependencies. */
     public TicketSummaryPanel(EventManager eventManager, Runnable backToEvents) {
         this.eventManager = eventManager;
         this.backToEvents = backToEvents;

@@ -4,6 +4,12 @@ package models;
  * Represents a specific pricing tier within an event (e.g., "VIP", "General Admission").
  * This class tracks both the starting capacity and the remaining available seats,
  * allowing the system to calculate how many tickets have been sold over time.
+ *
+ * Core concepts:
+ * - Encapsulation: the tier's price and inventory are private fields.
+ * - Composition: Event contains one or more TicketTier objects.
+ * - Constructor overloading: constructors create new tiers or restore saved inventory.
+ * - Data mapping: Database stores the tier fields in the ticket_tiers table.
  */
 public class TicketTier {
     private String tierName;
@@ -42,27 +48,22 @@ public class TicketTier {
         this.availableSeats = availableSeats;
     }
 
-    // Standard getters and setters for the UI and serialization tools
+    // Accessors let the UI and database layer read or update private tier data.
+    /** Returns the tier label, such as Regular or VIP. */
     public String getTierName() { return tierName; }
+    /** Sets the tier label. */
     public void setTierName(String tierName) { this.tierName = tierName; }
+    /** Returns the price of one ticket in this tier. */
     public double getPrice() { return price; }
+    /** Sets the price of one ticket in this tier. */
     public void setPrice(double price) { this.price = price; }
+    /** Returns the original number of seats offered in this tier. */
     public int getInitialCapacity() { return initialCapacity; }
+    /** Sets the original capacity used to describe this tier. */
     public void setInitialCapacity(int initialCapacity) { this.initialCapacity = initialCapacity; }
+    /** Returns the seats that are still available to purchase. */
     public int getAvailableSeats() { return availableSeats; }
+    /** Updates the remaining inventory returned by SQLite after a purchase. */
     public void setAvailableSeats(int availableSeats) { this.availableSeats = availableSeats; }
 
-    /** 
-     * Safely deducts inventory when a guest buys a ticket.
-     * 
-     * @param qty The number of tickets requested.
-     * @return true if the purchase was successful, false if there isn't enough inventory.
-     */
-    public boolean purchase(int qty) {
-        if (qty <= 0 || qty > availableSeats) {
-            return false; // Prevent overselling or negative quantities
-        }
-        availableSeats -= qty;
-        return true;
-    }
 }

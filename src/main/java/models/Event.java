@@ -1,46 +1,29 @@
 package models;
 
 import java.util.ArrayList;
-import java.time.LocalDate;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
- * The event model: it holds event details, ticket tiers, and host ownership.
+ * Holds event details, ticket tiers, and host ownership.
  *
- * OOP examples: private fields demonstrate encapsulation; the list of TicketTier
- * objects demonstrates composition (an Event has ticket tiers); constructors
- * create Event objects; and methods such as purchase() keep event rules with the data.
+ * OOP concepts: encapsulation is shown by the private fields and accessors;
+ * composition by the TicketTier list; overloaded constructors create either a
+ * full event or a simple one-tier event. The database maps it to two SQL tables.
  */
 public class Event {
-    // Core identity and physical details
     private String eventId;
     private String title;
     private String date;
     private String venue;
     
-    // Inventory and lifecycle management
     private List<TicketTier> ticketTiers = new ArrayList<>();
     private String status = "ON_SALE"; // ON_SALE, PAUSED, SOLD_OUT, CANCELLED
-    private String hostId;             // Links the event to the Admin who created it
-    private LocalDate salesStartDate;
-    private LocalDate salesEndDate;
-    
-    // UI presentation metadata
+    private String hostId;
+
+    // The catalog uses category for its label and artwork.
     private String category = "General";
-    private String bannerImagePath = "";
-    private String accentColorHex = "#0D6EFD";
-    private Map<String, String> customDetails = new LinkedHashMap<>();
-    private boolean archived;
 
-    /** No-argument constructor required for serialization tools. */
-    public Event() {
-    }
-
-    /** 
-     * Fully constructs a modern event with multiple ticket tiers and host ownership. 
-     */
+    /** Creates an event with its ticket tiers and the ID of its host. */
     public Event(String eventId, String title, String date, String venue, List<TicketTier> ticketTiers,
             String status, String hostId) {
         this.eventId = eventId;
@@ -52,16 +35,12 @@ public class Event {
         this.hostId = hostId;
     }
 
-    /** 
-     * Legacy constructor utilized by older versions of the app before multiple tiers were introduced.
-     * It wraps the single price and capacity into a default "Regular" tier automatically.
-     */
+    /** Convenience constructor for sample events that each have one Regular tier. */
     public Event(String eventId, String title, String date, String venue, int availableSeats, double ticketPrice) {
         this(eventId, title, date, venue,
                 List.of(new TicketTier("Regular", ticketPrice, availableSeats)), "ON_SALE", "");
     }
 
-    // Standard accessors
     public String getEventId() { return eventId; }
     public void setEventId(String eventId) { this.eventId = eventId; }
     public String getTitle() { return title; }
@@ -71,61 +50,26 @@ public class Event {
     public String getVenue() { return venue; }
     public void setVenue(String venue) { this.venue = venue; }
 
-    /** Returns the event's ticket tiers. */
     public List<TicketTier> getTicketTiers() { return ticketTiers; }
-    
-    /** Copies the supplied tiers so callers cannot replace the event's list by aliasing it. */
+
+    /** Copies the list so external changes cannot replace the event's tier collection. */
     public void setTicketTiers(List<TicketTier> ticketTiers) {
         this.ticketTiers = ticketTiers == null ? new ArrayList<>() : new ArrayList<>(ticketTiers);
     }
 
-    // Metadata accessors
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public String getHostId() { return hostId; }
     public void setHostId(String hostId) { this.hostId = hostId; }
-    public LocalDate getSalesStartDate() { return salesStartDate; }
-    public void setSalesStartDate(LocalDate salesStartDate) { this.salesStartDate = salesStartDate; }
-    public LocalDate getSalesEndDate() { return salesEndDate; }
-    public void setSalesEndDate(LocalDate salesEndDate) { this.salesEndDate = salesEndDate; }
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category == null || category.isBlank() ? "General" : category.trim(); }
-    public String getBannerImagePath() { return bannerImagePath; }
-    public void setBannerImagePath(String bannerImagePath) { this.bannerImagePath = bannerImagePath == null ? "" : bannerImagePath.trim(); }
-    public String getAccentColorHex() { return accentColorHex; }
-    public void setAccentColorHex(String accentColorHex) { this.accentColorHex = accentColorHex; }
-    
-    public Map<String, String> getCustomDetails() { return new LinkedHashMap<>(customDetails); }
-    public void setCustomDetails(Map<String, String> customDetails) {
-        this.customDetails = customDetails == null ? new LinkedHashMap<>() : new LinkedHashMap<>(customDetails);
-    }
-    public boolean isArchived() { return archived; }
-    public void setArchived(boolean archived) { this.archived = archived; }
 
-    /** Business rule: an event can sell tickets only when status and date window allow it. */
-    public boolean canPurchaseOn(LocalDate date) {
-        return "ON_SALE".equals(status)
-                && (salesStartDate == null || !date.isBefore(salesStartDate))
-                && (salesEndDate == null || !date.isAfter(salesEndDate));
+    /** Business rule: only events marked ON_SALE accept ticket purchases. */
+    public boolean canPurchase() {
+        return "ON_SALE".equals(status);
     }
 
-    /** Finds the requested tier, delegates its inventory check, and marks the event sold out if needed. */
-    public boolean purchase(String tierName, int quantity) {
-        if (!canPurchaseOn(LocalDate.now()) || tierName == null) {
-            return false;
-        }
-        for (TicketTier tier : ticketTiers) {
-            if (tierName.equals(tier.getTierName()) && tier.purchase(quantity)) {
-                if (getAvailableSeats() == 0) {
-                    status = "SOLD_OUT";
-                }
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** Calculates the total remaining inventory across all ticket tiers dynamically. */
+    /** Sums the remaining seats in every ticket tier. */
     public int getAvailableSeats() {
         return ticketTiers.stream().mapToInt(TicketTier::getAvailableSeats).sum();
     }
