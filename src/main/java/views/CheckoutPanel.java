@@ -23,9 +23,9 @@ import models.Booking;
 import models.Event;
 import models.TicketTier;
 
-/** 
- * Handles the guest checkout flow. Displays event details alongside a form 
- * for tier selection, quantity, and guest contact information.
+/**
+ * Guest checkout view. It collects form input, asks the Event model to check
+ * inventory, then sends a completed Booking to the next screen.
  */
 public class CheckoutPanel extends JPanel {
     private final EventManager eventManager;
@@ -266,7 +266,7 @@ public class CheckoutPanel extends JPanel {
         constraints.gridwidth = 1;
     }
 
-    /** Multiplies the active tier's price by the selected quantity. */
+    /** Updates the displayed total when the guest changes tier or quantity. */
     private void updateTotal() {
         int quantity = (Integer) quantitySpinner.getValue();
         double total = selectedTier == null ? 0 : selectedTier.getPrice() * quantity;
@@ -297,8 +297,13 @@ public class CheckoutPanel extends JPanel {
         boolean dateIsOpen = selectedEvent != null && selectedEvent.canPurchaseOn(LocalDate.now());
         boolean tierHasSeats = selectedTier.getAvailableSeats() > 0;
         
-        availabilityLabel.setText(!dateIsOpen ? "Sales Closed"
-                : tierHasSeats ? selectedTier.getAvailableSeats() + " tickets available" : "This tier is sold out");
+        if (!dateIsOpen) {
+            availabilityLabel.setText("Sales Closed");
+        } else if (tierHasSeats) {
+            availabilityLabel.setText(selectedTier.getAvailableSeats() + " tickets available");
+        } else {
+            availabilityLabel.setText("This tier is sold out");
+        }
                 
         if (confirmButton != null) confirmButton.setEnabled(dateIsOpen && tierHasSeats);
         updateTotal();

@@ -8,10 +8,8 @@ import javax.swing.JLabel;
 import javax.swing.JTextField;
 
 /**
- * Centralized styling engine for the SakaTickets application.
- * Manages the global color palette for both Dark and Light modes, 
- * typography roles, and reusable component styles to ensure a consistent, 
- * Figma-accurate UI across all panels.
+ * Shared style helpers for the views. Keeping colors, fonts, and common button
+ * styles here avoids repeating the same presentation code in every screen.
  */
 final class ViewStyles {
     // Global palette tokens

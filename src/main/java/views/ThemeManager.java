@@ -15,10 +15,9 @@ import javax.swing.border.CompoundBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.border.MatteBorder;
 
-/** 
- * Stores appearance preferences and applies the matching FlatLaf theme.
- * This class ensures that custom Swing borders and colors are dynamically 
- * re-mapped whenever the user switches between Dark and Light mode.
+/**
+ * Application-wide theme settings. Static methods let any screen read or update
+ * the shared appearance preference without creating a ThemeManager object.
  */
 public final class ThemeManager {
     // Java Preferences keeps appearance settings local to this computer's user account
@@ -73,10 +72,9 @@ public final class ThemeManager {
         ViewStyles.setThemeColors(darkMode, accentColor);
     }
 
-    /** 
-     * Recursively traverses a Swing component tree and dynamically translates 
-     * custom component colors and borders between dark and light palettes.
-     * This is required because FlatLaf only updates default UI components, not custom colors.
+    /**
+     * Updates a screen and all of its child components. This is recursion:
+     * containers call the same method for each component they contain.
      */
     public static void applyPalette(Component component) {
         if (component instanceof JComponent swingComponent) {

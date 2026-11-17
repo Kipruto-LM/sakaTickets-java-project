@@ -28,7 +28,7 @@ public class MainFrame extends JFrame {
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel cardPanel = new JPanel(cardLayout);
     
-    // Core controllers (singleton instances shared across all panels)
+    // Shared controllers are created once and passed to the panels that need them.
     private final EventManager eventManager;
     private final AccountManager accountManager;
     private final OrderManager orderManager;
@@ -95,9 +95,9 @@ public class MainFrame extends JFrame {
         ThemeManager.applyPalette(adminDashboardPanel);
     }
 
-    /** 
-     * Constructs all primary route panels and assigns them to the CardLayout.
-     * This is called on startup and whenever the global application theme changes.
+    /**
+     * Creates the screens and gives each one callbacks for navigation.
+     * CardLayout keeps all screens in one window and displays one card at a time.
      */
     private void buildScreens() {
         cardPanel.removeAll();

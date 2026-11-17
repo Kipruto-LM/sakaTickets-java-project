@@ -22,14 +22,14 @@ import javax.swing.border.EmptyBorder;
 import models.User;
 
 /**
- * Host account screen with sign-in and registration tabs. This view collects
- * text from Swing controls and delegates account rules to AccountManager.
+ * Host account view. Swing controls collect the form input, while AccountManager
+ * owns the registration and sign-in rules. MainFrame supplies navigation callbacks.
  */
 public class AdminLoginPanel extends JPanel {
     private final AccountManager accountManager;
     private final Consumer<User> loginSuccess;
     
-    // Login form controls
+    // Each field belongs to this screen, so the two forms can be built separately.
     private final JTextField loginUsername = new JTextField(20);
     private final JPasswordField loginPassword = new JPasswordField(20);
     
@@ -229,7 +229,7 @@ public class AdminLoginPanel extends JPanel {
         }
     }
 
-    /** Asks the account controller to verify the entered username and password. */
+    /** Sends the entered values to the account controller for verification. */
     private void authenticate() {
         String password = new String(loginPassword.getPassword());
         Optional<User> user = accountManager.authenticate(loginUsername.getText(), password);
@@ -243,7 +243,10 @@ public class AdminLoginPanel extends JPanel {
         }
     }
 
-    /** Checks that both password entries match, then delegates account creation to the controller. */
+    /**
+     * Checks that both password entries match, then lets AccountManager validate
+     * and save the new User.
+     */
     private void register() {
         try {
             String password = new String(passwordField.getPassword());

@@ -17,8 +17,8 @@ import javax.swing.JPanel;
 import models.Event;
 
 /**
- * Handles image loading, caching, and custom graphics rendering for the application.
- * Paints high-quality, rounded, cover-cropped photo panels that respond to screen resizing.
+ * Shared image helper for the views. It loads artwork and creates Swing panels
+ * that paint cropped, rounded images when Swing asks them to redraw.
  */
 final class EventVisuals {
     // Caches the primary hero image to prevent continuous disk reads
@@ -62,8 +62,9 @@ final class EventVisuals {
         return panel;
     }
 
-    /** 
-     * Custom JPanel that overrides paintComponent to draw a masked, gradient-washed image.
+    /**
+     * A specialized JPanel. Overriding paintComponent customizes how this object
+     * draws itself while keeping Swing's normal painting lifecycle.
      */
     private static final class CoverImagePanel extends JPanel {
         private final BufferedImage image;
@@ -158,13 +159,16 @@ final class EventVisuals {
             } catch (IOException ignored) {
             }
         }
-        String category = event.getCategory() == null ? "" : event.getCategory().toLowerCase(Locale.ROOT);
-        String resource = category.contains("tech") ? "/images/event-tech.jpg"
-                : category.contains("food") ? "/images/event-food.jpg"
-                : category.contains("music") || category.contains("acoustic") ? "/images/event-music.jpg"
-                : category.contains("night") || category.contains("dance") ? "/images/event-nightlife.jpg"
-                : "/images/event-music.jpg";
-        return loadResource(resource);
+        String category = event.getCategory() == null
+                ? ""
+                : event.getCategory().toLowerCase(Locale.ROOT);
+
+        if (category.contains("tech")) return loadResource("/images/event-tech.jpg");
+        if (category.contains("food")) return loadResource("/images/event-food.jpg");
+        if (category.contains("night") || category.contains("dance")) {
+            return loadResource("/images/event-nightlife.jpg");
+        }
+        return loadResource("/images/event-music.jpg");
     }
 
     /** Helper to load packaged images from the classpath JAR. */

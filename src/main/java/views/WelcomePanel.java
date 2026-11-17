@@ -14,14 +14,13 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
-/** 
- * The initial landing page of the application. 
- * Acts as a router presenting users with the choice to either browse events (Guest flow) 
- * or log in to create events (Host flow). 
+/**
+ * The initial landing page. It displays the two user choices and calls the
+ * navigation callbacks supplied by MainFrame when either button is pressed.
  */
 public class WelcomePanel extends JPanel {
-    private JPanel buyerArtwork;
-    private JPanel hostArtwork;
+    private final JPanel buyerArtwork;
+    private final JPanel hostArtwork;
 
     /** 
      * Constructs the welcome screen and wires up the primary navigation callbacks.

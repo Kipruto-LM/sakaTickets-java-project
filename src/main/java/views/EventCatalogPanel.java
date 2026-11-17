@@ -9,6 +9,7 @@ import java.awt.GridLayout;
 import java.awt.Dimension;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.util.List;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -22,9 +23,8 @@ import models.Event;
 import models.TicketTier;
 
 /** 
- * Public, guest-facing event browser. 
- * Fetches the active catalog from the EventManager and displays responsive event cards 
- * in a scrollable grid layout. 
+ * Public, guest-facing event browser. The panel asks EventManager for event
+ * data and turns each Event model into a Swing card for the guest to select.
  */
 public class EventCatalogPanel extends JPanel {
     private final EventManager eventManager;
@@ -88,17 +88,15 @@ public class EventCatalogPanel extends JPanel {
         });
     }
 
-    /** 
-     * Clears the current grid and completely rebuilds it by fetching 
-     * the latest unarchived events from the EventManager.
-     */
+    /** Clears and rebuilds the cards using the current public event list. */
     public void refreshEvents() {
         eventList.removeAll();
-        for (Event event : eventManager.getPublicEvents()) {
-            eventList.add(createEventCard(event, checkoutAction));
+        List<Event> events = eventManager.getPublicEvents();
+        for (Event event : events) {
+            eventList.add(createEventCard(event));
         }
         
-        if (eventManager.getPublicEvents().isEmpty()) {
+        if (events.isEmpty()) {
             JLabel empty = new JLabel("No public events right now. Please check back soon.", JLabel.CENTER);
             ViewStyles.styleSecondaryText(empty, 15f);
             eventList.add(empty);
@@ -129,7 +127,7 @@ public class EventCatalogPanel extends JPanel {
     /** 
      * Constructs a single event card displaying artwork, schedule details, and pricing.
      */
-    private JPanel createEventCard(Event event, Consumer<String> checkoutAction) {
+    private JPanel createEventCard(Event event) {
         JPanel card = new RoundedCardPanel();
         card.setLayout(new BorderLayout(0, 9));
         card.setBackground(ViewStyles.SURFACE);

@@ -51,9 +51,12 @@ import com.toedter.calendar.JDateChooser;
 import models.Event;
 import models.TicketTier;
 
-/** 
- * Comprehensive host workspace for event analytics, ticket inventory management, 
- * custom branding, and event lifecycle editing.
+/**
+ * Host-facing view for event summaries, inventory, settings, and event editing.
+ *
+ * This class extends JPanel because it is a Swing screen. EventManager and
+ * OrderManager are passed in so the view can display and update shared data
+ * without creating its own copies.
  */
 public class AdminDashboardPanel extends JPanel {
     private static final String[] EVENT_STATUSES = {"ON_SALE", "PAUSED", "CANCELLED", "SOLD_OUT"};
@@ -143,28 +146,51 @@ public class AdminDashboardPanel extends JPanel {
         refreshEvents();
     }
 
-    /** Refreshes host inventory rows, applies active filters, and updates dashboard totals. */
+    /**
+     * Rebuilds the visible event rows from the shared event collection.
+     * Filtering here keeps the screen responsive without changing the catalog.
+     */
     public void refreshEvents() {
         eventList.removeAll();
         List<Event> allEvents = eventManager.getEventsByHostId(hostId);
         String query = searchField.getText().trim().toLowerCase(java.util.Locale.ROOT);
         String selectedStatus = (String) statusFilter.getSelectedItem();
-        
-        List<Event> events = allEvents.stream()
-            .filter(event -> archivedToggle.isSelected() || !event.isArchived())
-            .filter(event -> "All statuses".equals(selectedStatus) || event.getStatus().equals(selectedStatus))
-            .filter(event -> query.isEmpty() || (event.getTitle() + " " + event.getVenue() + " "
-                + event.getCategory() + " " + event.getDate()).toLowerCase(java.util.Locale.ROOT).contains(query))
-            .filter(this::matchesDateRange)
-            .toList();
-            
-        for (Event event : events) eventList.add(createInventoryRow(event));
+
+        List<Event> visibleEvents = new ArrayList<>();
+        for (Event event : allEvents) {
+            if (matchesFilters(event, query, selectedStatus)) {
+                visibleEvents.add(event);
+                eventList.add(createInventoryRow(event));
+            }
+        }
+
         updateSummary(allEvents);
-        
+
+        // Show a different card when the host has no events versus no filter matches.
         java.awt.CardLayout layout = (java.awt.CardLayout) eventState.getLayout();
-        layout.show(eventState, allEvents.isEmpty() ? "empty" : events.isEmpty() ? "filtered" : "eventsTable");
+        String state;
+        if (allEvents.isEmpty()) {
+            state = "empty";
+        } else if (visibleEvents.isEmpty()) {
+            state = "filtered";
+        } else {
+            state = "eventsTable";
+        }
+        layout.show(eventState, state);
         eventList.revalidate();
         eventList.repaint();
+    }
+
+    /** Returns whether the event passes each filter control in the inventory header. */
+    private boolean matchesFilters(Event event, String query, String selectedStatus) {
+        boolean archivedIsVisible = archivedToggle.isSelected() || !event.isArchived();
+        boolean statusMatches = "All statuses".equals(selectedStatus)
+                || event.getStatus().equals(selectedStatus);
+        String eventText = (event.getTitle() + " " + event.getVenue() + " "
+                + event.getCategory() + " " + event.getDate()).toLowerCase(java.util.Locale.ROOT);
+        boolean textMatches = query.isEmpty() || eventText.contains(query);
+
+        return archivedIsVisible && statusMatches && textMatches && matchesDateRange(event);
     }
 
     private void buildPanel(String hostName) {
@@ -373,10 +399,18 @@ public class AdminDashboardPanel extends JPanel {
 
     private JPanel buildStatusSummary() {
         JPanel panel = sectionPanel("Inventory status");
-        int onSale = (int) eventManager.getEventsByHostId(hostId).stream()
-                .filter(event -> !event.isArchived() && "ON_SALE".equals(event.getStatus())).count();
-        int soldOut = (int) eventManager.getEventsByHostId(hostId).stream()
-                .filter(event -> !event.isArchived() && "SOLD_OUT".equals(event.getStatus())).count();
+        int onSale = 0;
+        int soldOut = 0;
+        for (Event event : eventManager.getEventsByHostId(hostId)) {
+            if (event.isArchived()) {
+                continue;
+            }
+            if ("ON_SALE".equals(event.getStatus())) {
+                onSale++;
+            } else if ("SOLD_OUT".equals(event.getStatus())) {
+                soldOut++;
+            }
+        }
         addSummaryLine(panel, "On sale", Integer.toString(onSale), new Color(0x00, 0xE0, 0xA0));
         addSummaryLine(panel, "Sold out", Integer.toString(soldOut), new Color(0xFF, 0x4D, 0x6A));
         return panel;
@@ -643,19 +677,29 @@ public class AdminDashboardPanel extends JPanel {
     }
 
     private void updateSummary(List<Event> events) {
-        int capacity = events.stream().filter(event -> !event.isArchived())
-                .flatMap(event -> event.getTicketTiers().stream())
-                .mapToInt(TicketTier::getInitialCapacity).sum();
-        int sold = events.stream().filter(event -> !event.isArchived())
-                .mapToInt(event -> orderManager.calculateTotalTicketsSold(event.getEventId())).sum();
-        double revenue = events.stream().filter(event -> !event.isArchived())
-                .mapToDouble(event -> orderManager.calculateEventRevenue(event.getEventId())).sum();
-                
+        int capacity = 0;
+        int sold = 0;
+        double revenue = 0;
+        int activeEventCount = 0;
+
+        // Calculate dashboard totals in one pass so each event is checked once.
+        for (Event event : events) {
+            if (event.isArchived()) {
+                continue;
+            }
+            activeEventCount++;
+            for (TicketTier tier : event.getTicketTiers()) {
+                capacity += tier.getInitialCapacity();
+            }
+            sold += orderManager.calculateTotalTicketsSold(event.getEventId());
+            revenue += orderManager.calculateEventRevenue(event.getEventId());
+        }
+
         capacityValue.setText(String.format("%,d", capacity));
         soldValue.setText(String.format("%,d", sold));
         revenueValue.setText(String.format("KES %,.0f", revenue));
         soldHint.setText((capacity == 0 ? 0 : Math.round(sold * 100.0 / capacity)) + "% sell-through");
-        capacityHint.setText(events.stream().filter(event -> !event.isArchived()).count() + " active events");
+        capacityHint.setText(activeEventCount + " active events");
     }
 
     private JPanel buildSettingsPage(String name) {
@@ -831,6 +875,7 @@ public class AdminDashboardPanel extends JPanel {
         };
     }
 
+    /** Combines reusable form sections into one scrollable event editor. */
     private JPanel buildManagementForm() {
         styleInputs();
         JPanel form = new JPanel(new GridBagLayout());
@@ -1199,6 +1244,10 @@ public class AdminDashboardPanel extends JPanel {
         tierActionButton.setText("Add Tier");
     }
 
+    /**
+     * Checks required values, updates the Event model, then asks EventManager
+     * to add or replace the event in the catalog.
+     */
     private void saveEvent() {
         clearValidation();
         String title = titleField.getText().trim();
