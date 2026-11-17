@@ -3,9 +3,9 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import views.ThemeManager;
 
-/** 
- * The main entry point for the SakaTickets application. 
- * Orchestrates the loading of the FlatLaf theme engine before initializing the UI.
+/**
+ * Application entry point. It applies the saved theme, then asks Swing to build
+ * the interface on its Event Dispatch Thread (the thread Swing uses for UI work).
  */
 public class Main {
     

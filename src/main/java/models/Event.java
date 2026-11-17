@@ -6,9 +6,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 
- * The primary aggregate root for the application. It holds the schedule, 
- * host ownership, UI presentation options (images/colors), and the list of ticket tiers.
+/**
+ * The event model: it holds event details, ticket tiers, and host ownership.
+ *
+ * OOP examples: private fields demonstrate encapsulation; the list of TicketTier
+ * objects demonstrates composition (an Event has ticket tiers); constructors
+ * create Event objects; and methods such as purchase() keep event rules with the data.
  */
 public class Event {
     // Core identity and physical details
@@ -68,10 +71,10 @@ public class Event {
     public String getVenue() { return venue; }
     public void setVenue(String venue) { this.venue = venue; }
 
-    /** Returns the tier list. Modifying the returned list does not affect the event safely. */
+    /** Returns the event's ticket tiers. */
     public List<TicketTier> getTicketTiers() { return ticketTiers; }
     
-    /** Sets the inventory tiers, copying the list to prevent external modification bugs. */
+    /** Copies the supplied tiers so callers cannot replace the event's list by aliasing it. */
     public void setTicketTiers(List<TicketTier> ticketTiers) {
         this.ticketTiers = ticketTiers == null ? new ArrayList<>() : new ArrayList<>(ticketTiers);
     }
@@ -99,20 +102,14 @@ public class Event {
     public boolean isArchived() { return archived; }
     public void setArchived(boolean archived) { this.archived = archived; }
 
-    /** 
-     * Validates if the event is actively accepting purchases on a specific day.
-     * Checks both the manual status flag and the optional start/end date windows.
-     */
+    /** Business rule: an event can sell tickets only when status and date window allow it. */
     public boolean canPurchaseOn(LocalDate date) {
         return "ON_SALE".equals(status)
                 && (salesStartDate == null || !date.isBefore(salesStartDate))
                 && (salesEndDate == null || !date.isAfter(salesEndDate));
     }
 
-    /** 
-     * Locates the correct ticket tier by name and attempts to deduct inventory.
-     * Automatically flips the event status to SOLD_OUT if this purchase empties the last tier.
-     */
+    /** Finds the requested tier, delegates its inventory check, and marks the event sold out if needed. */
     public boolean purchase(String tierName, int quantity) {
         if (!canPurchaseOn(LocalDate.now()) || tierName == null) {
             return false;

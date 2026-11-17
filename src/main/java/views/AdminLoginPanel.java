@@ -9,7 +9,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Optional;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
@@ -22,9 +21,9 @@ import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 import models.User;
 
-/** 
- * Host account entry point providing dual tabs for sign-in and account registration. 
- * Securely transmits credentials to the AccountManager and clears password arrays after verification[cite: 11].
+/**
+ * Host account screen with sign-in and registration tabs. This view collects
+ * text from Swing controls and delegates account rules to AccountManager.
  */
 public class AdminLoginPanel extends JPanel {
     private final AccountManager accountManager;
@@ -47,7 +46,7 @@ public class AdminLoginPanel extends JPanel {
 
     /** 
      * Constructs the login panel layout with branding, an explanatory introduction, 
-     * and tabbed account forms[cite: 11].
+     * and tabbed account forms.
      */
     public AdminLoginPanel(AccountManager accountManager, Consumer<User> loginSuccess, Runnable backToHome) {
         this.accountManager = accountManager;
@@ -98,7 +97,7 @@ public class AdminLoginPanel extends JPanel {
         add(layout, BorderLayout.CENTER);
     }
 
-    /** Builds the left-hand column featuring host-focused graphics and mission copy[cite: 11]. */
+    /** Builds the left-hand column featuring host-focused graphics and mission copy. */
     private JPanel buildHostIntroduction() {
         JPanel intro = new JPanel(new BorderLayout(0, 14));
         intro.setOpaque(false);
@@ -133,7 +132,7 @@ public class AdminLoginPanel extends JPanel {
         return intro;
     }
 
-    /** Constructs the Sign In tab form[cite: 11]. */
+    /** Constructs the Sign In tab form. */
     private JPanel buildLoginForm() {
         JPanel form = createForm("Host Sign In");
         styleInputs(loginUsername, loginPassword);
@@ -149,7 +148,7 @@ public class AdminLoginPanel extends JPanel {
         return form;
     }
 
-    /** Constructs the Account Registration tab form[cite: 11]. */
+    /** Constructs the Account Registration tab form. */
     private JPanel buildRegistrationForm() {
         JPanel form = createForm("Create Your Host Account");
         styleInputs(nameField, emailField, usernameField, passwordField, confirmPasswordField);
@@ -230,30 +229,26 @@ public class AdminLoginPanel extends JPanel {
         }
     }
 
-    /** Verifies user credentials against the AccountManager and wipes the password array securely[cite: 11]. */
+    /** Asks the account controller to verify the entered username and password. */
     private void authenticate() {
-        char[] password = loginPassword.getPassword();
-        try {
-            Optional<User> user = accountManager.authenticate(loginUsername.getText(), password);
-            if (user.isPresent()) {
-                loginPassword.setText("");
-                loginMessage.setText(" ");
-                loginSuccess.accept(user.get());
-            } else {
-                loginMessage.setText("Username or password is incorrect.");
-                loginPassword.setText("");
-            }
-        } finally {
-            Arrays.fill(password, '\0'); // Clear password from memory
+        String password = new String(loginPassword.getPassword());
+        Optional<User> user = accountManager.authenticate(loginUsername.getText(), password);
+        if (user.isPresent()) {
+            loginPassword.setText("");
+            loginMessage.setText(" ");
+            loginSuccess.accept(user.get());
+        } else {
+            loginMessage.setText("Username or password is incorrect.");
+            loginPassword.setText("");
         }
     }
 
-    /** Validates registration matching rules, calls AccountManager, and signs the new host in[cite: 11]. */
+    /** Checks that both password entries match, then delegates account creation to the controller. */
     private void register() {
-        char[] password = passwordField.getPassword();
-        char[] confirmation = confirmPasswordField.getPassword();
         try {
-            if (!Arrays.equals(password, confirmation)) {
+            String password = new String(passwordField.getPassword());
+            String confirmation = new String(confirmPasswordField.getPassword());
+            if (!password.equals(confirmation)) {
                 registrationMessage.setText("The passwords do not match.");
                 return;
             }
@@ -264,9 +259,6 @@ public class AdminLoginPanel extends JPanel {
             loginSuccess.accept(user);
         } catch (IllegalArgumentException | IOException exception) {
             registrationMessage.setText(exception.getMessage());
-        } finally {
-            Arrays.fill(password, '\0');
-            Arrays.fill(confirmation, '\0');
         }
     }
 

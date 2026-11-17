@@ -5,9 +5,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/** 
- * Serves as the central repository and analytics engine for guest transactions.
- * Manages the generation of unique receipts and calculates event-level revenue.
+/**
+ * Controller for guest purchases. It creates Booking model objects, keeps them
+ * in memory, and calculates simple event sales totals for the host dashboard.
  */
 public class OrderManager {
     // In-memory list acting as our database for the MVP

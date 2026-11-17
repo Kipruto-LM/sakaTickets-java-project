@@ -7,10 +7,9 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import models.Event;
 
-/** 
- * Central repository for the event catalog. 
- * Manages the lifecycle of events (creation, updating, duplication) and 
- * seeds the application with default dummy data for demonstration purposes.
+/**
+ * Controller/repository for the event catalog. It creates and updates Event
+ * objects, applies catalog rules, and supplies data to the Swing views.
  */
 public class EventManager {
     // The master list of all events in the system

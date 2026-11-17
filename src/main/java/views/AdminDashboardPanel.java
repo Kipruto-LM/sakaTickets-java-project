@@ -53,7 +53,7 @@ import models.TicketTier;
 
 /** 
  * Comprehensive host workspace for event analytics, ticket inventory management, 
- * custom branding, and event lifecycle editing[cite: 10].
+ * custom branding, and event lifecycle editing.
  */
 public class AdminDashboardPanel extends JPanel {
     private static final String[] EVENT_STATUSES = {"ON_SALE", "PAUSED", "CANCELLED", "SOLD_OUT"};
@@ -143,7 +143,7 @@ public class AdminDashboardPanel extends JPanel {
         refreshEvents();
     }
 
-    /** Refreshes host inventory rows, applies active filters, and updates global overview metrics[cite: 10]. */
+    /** Refreshes host inventory rows, applies active filters, and updates dashboard totals. */
     public void refreshEvents() {
         eventList.removeAll();
         List<Event> allEvents = eventManager.getEventsByHostId(hostId);

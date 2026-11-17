@@ -10,9 +10,10 @@ import javax.swing.JPanel;
 import models.Booking;
 import models.User;
 
-/** 
- * Top-level window and CardLayout router for the application.
- * Instantiates the core data controllers and injects them into the individual view panels.
+/**
+ * Top-level application window and screen router. It creates one shared set of
+ * controllers, then passes them into view panels (dependency injection). The
+ * CardLayout switches between screens without creating a separate window each time.
  */
 public class MainFrame extends JFrame {
     // Card identifiers keep navigation independent from panel implementation classes.
